@@ -1,0 +1,13 @@
+package com.ct240.backend.enums;
+
+public enum Type {
+    TASK_ASSIGNMENT,
+    COMMENT,
+    ADD_USER_IN_SPACE,
+    DELETE_USER_FROM_SPACE,
+    CHANGE_ROLE_SPACE,
+    ADD_USER_IN_BOARD,
+    DELETE_USER_FROM_BOARD,
+    DELETE_SPACE,
+    DELETE_BOARD,
+}
