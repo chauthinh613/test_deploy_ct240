@@ -3,7 +3,7 @@ import Navbar from '../layout/AppNavbar.vue'
 import Sidebar from '../layout/AppSidebar.vue'
 import CreateSpace from './CreateSpace.vue';
 import { onMounted, ref } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import { useRouter } from 'vue-router'
  
 const router = useRouter();
@@ -29,11 +29,7 @@ const SummaryProfile=()=>{
 const fetchUserProfile=async()=>{
     try{
         const token=localStorage.getItem('token');
-        const response = await axios.get("http://localhost:8080/api/users/profile",{
-            headers:{
-                'Authorization':`Bearer ${token}`
-            }
-        });
+        const response = await api.get("/users/profile");
         username.value=response.data.data.name;
     }
     catch(error){

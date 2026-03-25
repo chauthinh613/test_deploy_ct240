@@ -138,6 +138,7 @@ public class BoardService {
                 .collect(Collectors.toList());
     }
 
+
     public BoardResponse updateBoard( String boardId, BoardUpdateRequest request, Authentication authentication){
         User user = permissionService.getUserAuth(authentication);
         //tim board

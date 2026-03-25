@@ -18,6 +18,8 @@ public interface SpaceUserRepository extends JpaRepository<SpaceUser, String> {
 
     Optional<SpaceUser> findByUserIdAndSpaceId(String userId, String spaceId);
 
+    List<SpaceUser> findBySpaceIdAndRole(String spaceId, Role role);
+
     @Query("SELECT su FROM SpaceUser su " +
             "JOIN su.space s " +
             "JOIN Board b ON b.space.id = s.id " +

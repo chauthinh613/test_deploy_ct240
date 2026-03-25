@@ -5,7 +5,7 @@ import CreateSpace from './CreateSpace.vue';
 import NotificationCard from '../base/NotificationCard.vue';
 import ProfileSetting from './ProfileSetting.vue';
 import { onMounted, onUnmounted, ref, computed } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { useRouter } from 'vue-router'
 
@@ -23,10 +23,18 @@ const closeModal = () => {
   isModalOpen.value = false;
 }
 
+let isToggling = false;
+
 const isShowSummaryProfile = ref(false);
+const profileRef = ref(null);
 
 const SummaryProfile=()=>{
-    isShowSummaryProfile.value= isShowSummaryProfile.value ===false ? true:false;
+    isToggling = true;
+    isShowSummaryProfile.value = !isShowSummaryProfile.value;
+    if (isShowSummaryProfile.value) {
+        isShowNotification.value = false;
+    }
+    setTimeout(() => { isToggling = false; }, 0);
 }
 
 const isProfileSettingOpen = ref(false);
@@ -37,11 +45,13 @@ const openProfileSetting = () => {
 
 const isShowNotification = ref(false);
 const notificationRef = ref(null);
-let isToggling = false;
 
 const toggleNotification=()=>{
     isToggling = true;
-    isShowNotification.value = isShowNotification.value ===false ? true:false;
+    isShowNotification.value = !isShowNotification.value;
+    if (isShowNotification.value) {
+        isShowSummaryProfile.value = false;
+    }
     setTimeout(() => { isToggling = false; }, 0);
 }
 
@@ -50,16 +60,14 @@ const handleClickOutside = (event) => {
     if (isShowNotification.value && notificationRef.value && !notificationRef.value.contains(event.target)) {
         isShowNotification.value = false;
     }
+    if (isShowSummaryProfile.value && profileRef.value && !profileRef.value.contains(event.target)) {
+        isShowSummaryProfile.value = false;
+    }
 }
 
 const fetchUserProfile=async()=>{
     try{
-        const token=localStorage.getItem('token');
-        const response = await axios.get("http://localhost:8080/api/users/profile",{
-            headers:{
-                'Authorization':`Bearer ${token}`
-            }
-        });
+        const response = await api.get("/users/profile");
         username.value=response.data.data.name;
     }
     catch(error){
@@ -81,10 +89,7 @@ const hasUnreadNotifications = computed(() => {
 
 const fetchNotifications = async () => {
     try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get("http://localhost:8080/api/notifications", {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await api.get("/notifications");
         const data = response.data;
         // Xử lý payload và sắp xếp theo thời gian mới nhất (createAt giảm dần)
         const rawData = Array.isArray(data) ? data : (data.data || []);
@@ -164,7 +169,7 @@ const handleLogOut=()=>{
       <CreateSpace v-if="isModalOpen" @close-modal="closeModal"></CreateSpace>
       <ProfileSetting v-if="isProfileSettingOpen" @close="isProfileSettingOpen = false"></ProfileSetting>
     </div>
-    <div class="overview_profile" v-if="isShowSummaryProfile">
+    <div class="overview_profile" v-if="isShowSummaryProfile" ref="profileRef">
             <div class="avatar">{{username.charAt(0).toUpperCase()}}</div>
             <div class="name_user">{{ username }}</div>
         <div @click="openProfileSetting">Hồ sơ và hiển thị</div>

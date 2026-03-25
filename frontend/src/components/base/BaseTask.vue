@@ -83,7 +83,7 @@ label{
     gap:10px;
     width: 93%;
     background-color: #ffffff;
-    border-radius: 1.25rem;
+    border-radius: 0.5rem;
     height: 30px;
     padding: 10px;
     margin-bottom: 5px;

@@ -158,8 +158,6 @@ public class CardService {
         permissionService.requireInBoard(user.getId(), board.getId());
 
         cardRepository.delete(card);
-
-
     }
 
 

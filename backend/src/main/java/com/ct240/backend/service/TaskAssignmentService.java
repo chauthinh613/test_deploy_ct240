@@ -177,4 +177,16 @@ public class TaskAssignmentService {
 
         taskAssignmentRepository.delete(taskAssignment);
     }
+
+    public void unassignAllTasksInBoard(String userId, String boardId){
+        List<TaskAssignment> list = taskAssignmentRepository.findAllByUserIdAndBoardId(userId, boardId);
+
+        taskAssignmentRepository.deleteAll(list);
+    }
+
+    public void unassignAllTasksInSpace(String userId, String spaceId){
+        List<TaskAssignment> list = taskAssignmentRepository.findAllByUserIdAndSpaceId(userId, spaceId);
+
+        taskAssignmentRepository.deleteAll(list);
+    }
 }

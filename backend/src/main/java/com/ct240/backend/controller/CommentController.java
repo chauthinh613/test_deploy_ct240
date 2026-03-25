@@ -45,7 +45,7 @@ public class CommentController {
             Authentication authentication){
         ApiResponse<Void> apiResponse = new ApiResponse<>();
         commentService.deleteComment(commentId, authentication);
-        apiResponse.setMessage("Task is Deleted");
+        apiResponse.setMessage("Comment Is Deleted");
         return apiResponse;
     }
 }

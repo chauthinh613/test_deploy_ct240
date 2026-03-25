@@ -1,7 +1,7 @@
 <script setup>
 import { ref,onMounted,watch } from 'vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
 import draggable from 'vuedraggable'
 
 import MainLayout from '@/components/layout/MainLayout.vue'
@@ -23,7 +23,6 @@ const OpenDetailTask=(task)=>{
 // Hàm đón dữ liệu update checkbox từ BaseTask.vue gửi lên
 const handleUpdateTaskStatus = async (taskId, isChecked) => {
   try {
-    const token = localStorage.getItem('token');
     
     let targetTask = null;
     for (const card of cards.value) {
@@ -42,9 +41,7 @@ const handleUpdateTaskStatus = async (taskId, isChecked) => {
     } : { completed: isChecked };
 
     // Gọi API PUT để cập nhật trạng thái
-    await axios.put(`http://localhost:8080/api/tasks/${taskId}`, payload, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    await api.put(`/tasks/${taskId}`, payload);
     
     console.log(`Đã cập nhật trạng thái task ${taskId} thành: ${isChecked}`);
     
@@ -88,13 +85,10 @@ const handleTaskChange = async (event, targetCardId) => {
     }
 
     try {
-      const token = localStorage.getItem('token');
       // Gọi API
-      await axios.put(`http://localhost:8080/api/tasks/${task.id}/move`, {
+      await api.put(`/tasks/${task.id}/move`, {
         cardId: targetCardId, // ID của cột hiện tại
         position: newPosition // Vị trí mới
-      }, {
-        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       // Quan trọng: Cập nhật lại position ở client để các lần thả sau không bị sai số
@@ -138,11 +132,8 @@ const handleCardChange = async (event) => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:8080/api/cards/${card.id}/move`, {
+      await api.put(`/cards/${card.id}/move`, {
         position: newPosition
-      }, {
-        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       // Quan trọng: Cập nhật lại position ở client để các lần thả sau không bị dùng dữ liệu cũ
@@ -173,20 +164,17 @@ const refreshListAfterCreate = () => {
 const fetchBoardCard = async (SpaceId, BoardId) => {
   isLoading.value = true;
   try {
-    const token = localStorage.getItem('token');
-    const headers = { 'Authorization': `Bearer ${token}` };
-
-    const BoardRes = await axios.get(`http://localhost:8080/api/boards/${BoardId}`, { headers });
+    const BoardRes = await api.get(`/boards/${BoardId}`);
     boardData.value = BoardRes.data.data || BoardRes.data;
 
-    const CardRes = await axios.get(`http://localhost:8080/api/boards/${BoardId}/cards`, { headers });
+    const CardRes = await api.get(`/boards/${BoardId}/cards`);
     let tempCards = CardRes.data.data || CardRes.data;
 
     // Dùng Promise.all để lấy tất cả Task của các Card cùng lúc 
     const cardsWithTasks = await Promise.all(tempCards.map(async (card) => {
       try {
         // Gọi API lấy task của từng card 
-        const taskRes = await axios.get(`http://localhost:8080/api/cards/${card.id}/tasks`, { headers });
+        const taskRes = await api.get(`/cards/${card.id}/tasks`);
         
         // Trả về card có kèm thêm mảng tasks vừa lấy được
         return {
@@ -212,15 +200,12 @@ const fetchBoardCard = async (SpaceId, BoardId) => {
 
 const handleCreateTask = async (cardId, taskName) => {
   try {
-    const token = localStorage.getItem('token');
-    const headers = { 'Authorization': `Bearer ${token}` };
-
     const payload = {
       name: taskName,
       completed: false 
     };
 
-    await axios.post(`http://localhost:8080/api/cards/${cardId}/tasks`, payload, { headers });
+    await api.post(`/cards/${cardId}/tasks`, payload);
 
     console.log(`Đã thêm thành công thẻ: ${taskName} vào danh sách ${cardId}`);
 
@@ -235,10 +220,7 @@ const handleCreateTask = async (cardId, taskName) => {
 
 const handleDeleteCard=async(cardId)=>{
   try{
-    const token=localStorage.getItem('token');
-    await axios.delete(`http://localhost:8080/api/cards/${cardId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    await api.delete(`/cards/${cardId}`);
     
     console.log(`Đã xóa thành công danh sách có ID: ${cardId}`);
   const spaceId = route.params.idSpace;
@@ -254,11 +236,8 @@ const handleDeleteCard=async(cardId)=>{
 
 const handleUpdateCardName = async (cardId, newName) => {
   try {
-    const token = localStorage.getItem('token');
-    await axios.put(`http://localhost:8080/api/cards/${cardId}`, {
+    await api.put(`/cards/${cardId}`, {
       name: newName
-    }, {
-      headers: { 'Authorization': `Bearer ${token}` }
     });
     
     console.log(`Đã cập nhật tên danh sách ${cardId} thành: ${newName}`);

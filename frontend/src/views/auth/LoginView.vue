@@ -1,7 +1,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
 import LoginLayout from '@/components/layout/LoginLayout.vue'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 
@@ -30,8 +30,8 @@ const handleLogin = async () => {
 
   try {
 
-    const response = await axios.post(
-      "http://localhost:8080/api/auth/login",
+    const response = await api.post(
+      "/auth/login",
       {
         username: form.username,
         password: form.password

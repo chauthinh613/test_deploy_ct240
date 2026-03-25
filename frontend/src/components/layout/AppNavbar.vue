@@ -1,5 +1,5 @@
 <script setup>
-import IconSetting from '../icons/IconSetting.vue';
+//import IconSetting from '../icons/IconSetting.vue';
 import IconCreate from '../icons/IconCreate.vue';
 import IconUser from '../icons/IconUser.vue';
 import BaseButton from '../base/BaseButton.vue';
@@ -16,6 +16,9 @@ const goToRegister = () => {
     router.push('/register');
 }
 
+const goToBoardView=()=>{
+  router.push('/boards');
+}
 const props = defineProps({
   hasUnread: {
     type: Boolean,
@@ -30,7 +33,7 @@ const props = defineProps({
 
 <template>
   <div class="navbar">
-    <div class="list_icon">
+    <div class="list_icon" @click="goToBoardView">
       <img id="logo" src="../../assets/logo.png"></img>
       <div>Kabala</div>
     </div>
@@ -47,7 +50,7 @@ const props = defineProps({
         <span v-if="hasUnread" class="unread-dot"></span>
       </div>
       <div id="icon2" class="avatar" @click="emit('toggle-profile')"><IconUser></IconUser></div>
-      <div id="icon3"><IconSetting/></div>
+      <!--<div id="icon3"><IconSetting/></div>-->
     </div>
     
     <div class="right_navbar_auth" v-if="isAuthPage">
@@ -72,7 +75,6 @@ const props = defineProps({
     font-weight: 550;
   }
   .list_icon{
-    
     display: flex;
     font-size: 30px;
     color:rgb(255, 255, 255);
@@ -80,6 +82,7 @@ const props = defineProps({
     align-items: center;
     justify-items: center;
     margin-right: 10px;
+    cursor:pointer;
   }
   /*.search{
     border:1px solid grey;

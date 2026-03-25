@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import Button from '@/components/base/BaseButton.vue'
 import MemberBar from '@/components/base/MemberBar.vue'
@@ -68,9 +68,7 @@ const currentUserId = ref(null)
  */
 const fetchCurrentUserProfile = async () => {
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-    const res = await axios.get('http://localhost:8080/api/users/profile', { headers })
+    const res = await api.get('/users/profile')
 
     const data = res.data?.data ?? res.data
     currentUserId.value = data?.id ?? data?.user?.id ?? null
@@ -134,11 +132,7 @@ const fetchUserSuggestions = async (keyword) => {
   isSuggestionOpen.value = true
 
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    const res = await axios.get('http://localhost:8080/api/users/search', {
-      headers,
+    const res = await api.get('/users/search', {
       params: { keyword: trimmed }
     })
 
@@ -193,13 +187,9 @@ const addMemberToSpace = async () => {
 
   isAddingMember.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    await axios.post(
-      `http://localhost:8080/api/spaces/${spaceId}/members`,
-      { userId, role: 'MEMBER' },
-      { headers }
+    await api.post(
+      `/spaces/${spaceId}/members`,
+      { userId, role: 'MEMBER' }
     )
 
     // Reset input sau khi thêm
@@ -232,16 +222,13 @@ const normalizeMembers = (raw) => {
 const fetchSpaceMember= async (SpaceId)=>{
   isLoading.value=true;
   try{
-  const token=localStorage.getItem('token');
-  const headers={'Authorization':`Bearer ${token}`};
-
-  const SpaceRes= await axios.get(`http://localhost:8080/api/spaces/${SpaceId}`,{headers});
+  const SpaceRes= await api.get(`/spaces/${SpaceId}`);
   spaceData.value=SpaceRes.data.data || SpaceRes.data;
 
   // Lấy danh sách member theo endpoint riêng (nếu backend có).
   // Nếu API của bạn trả về khác key, bạn chỉ cần chỉnh đoạn map ở dưới.
   try {
-    const MemberRes = await axios.get(`http://localhost:8080/api/spaces/${SpaceId}/members`, { headers });
+    const MemberRes = await api.get(`/spaces/${SpaceId}/members`);
     const raw = MemberRes.data?.data ?? MemberRes.data ?? [];
     members.value = normalizeMembers(Array.isArray(raw) ? raw : (raw.members ?? []));
   } catch (e) {
@@ -410,16 +397,12 @@ const handleUpdateRole = async (member, newRole) => {
   })
 
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    await axios.put(
-      `http://localhost:8080/api/spaces/${spaceId}/members/${userId}`,
+    await api.put(
+      `/spaces/${spaceId}/members/${userId}`,
       {
         id: userId, // thuộc tính `id`: id của user cần update
         role: newRole // thuộc tính `role`: role mới (ADMIN | MEMBER)
-      },
-      { headers }
+      }
     )
   } catch (e) {
     // Rollback: load lại từ server để đảm bảo role đúng
@@ -456,19 +439,17 @@ const handleRemoveMember = async (member) => {
 
   setDeletingMember(userId, true)
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
 
     if (isSelf) {
       // API: user hiện tại rời khỏi Space. OWNER không được quyền rời (backend sẽ trả lỗi).
-      await axios.delete(`http://localhost:8080/api/spaces/${spaceId}/members`, { headers })
+      await api.delete(`/spaces/${spaceId}/members`)
 
       // Rời khỏi space thì điều hướng ra ngoài cho UX mượt (về /home).
       router.push('/home')
       return
     }
 
-    await axios.delete(`http://localhost:8080/api/spaces/${spaceId}/members/${userId}`, { headers })
+    await api.delete(`/spaces/${spaceId}/members/${userId}`)
     await fetchSpaceMember(spaceId)
   } catch (e) {
     alert('Bạn không có quyền')

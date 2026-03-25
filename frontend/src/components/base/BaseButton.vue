@@ -70,7 +70,7 @@ defineProps({
 
 .btn-ghost {
   border: 1px solid #bce3f5;
-  background-color: transparent;
+  background-color: #ffffff;
   color:#2f4562;
 }
 .btn-ghost:hover:not(:disabled) {

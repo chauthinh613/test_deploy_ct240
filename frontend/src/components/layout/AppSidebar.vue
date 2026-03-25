@@ -1,6 +1,6 @@
 <script setup>
 import IconBoard from '../icons/IconBoard.vue'
-import IconHome from '../icons/IconHome.vue'
+//import IconHome from '../icons/IconHome.vue'
 import IconMember from '../icons/IconMember.vue'
 import IconGears from '../icons/IconGears.vue'
 import { workspaceStore } from '@/stores/workspaceStore.js'
@@ -45,8 +45,10 @@ const fetchWorkspaces = async () => {
 // Chạy hàm fetchWorkspaces ngay khi Sidebar xuất hiện
 onMounted(() => {
   fetchWorkspaces();
-  if (route.params.idSpace) {
-    openSpaceId.value = parseInt(route.params.idSpace);
+  // Chỉ tự mở mục "Bảng/Thành viên" trong Sidebar khi đang ở trang Space (đường dẫn dạng /space/:id)
+  // Không mở khi đang ở trang board-card dạng /spaces/:idSpace/boards/:idBoard/cards
+  if (route.params.idSpace && route.path.startsWith('/space/')) {
+    openSpaceId.value = parseInt(route.params.idSpace)
   }
 });
 
@@ -82,14 +84,14 @@ const closeEditSpaceModal = () => {
 <template>
   <div class="sidebar">
   
-  <div class="Sidebar_items" @click="goToAllBoards" :class="{ 'current-page': route.path === '/boards' || route.path.startsWith('/space') }">
+  <div class="Sidebar_items" @click="goToAllBoards" :class="{ 'current-page': route.path === '/boards' }">
     <IconBoard></IconBoard>
     <div>Bảng</div>
   </div> 
-  <div class="Sidebar_items" :class="{ 'current-page': route.path === '/home' || route.path === '/' }">
+  <!--<div class="Sidebar_items" :class="{ 'current-page': route.path === '/home' || route.path === '/' }">
     <IconHome></IconHome>
     <div>Trang chủ</div>
-  </div>
+  </div>-->
   <div class="separator"></div>
   <div class="label">Không gian làm việc</div>
   <div class="workspace-list">
@@ -174,7 +176,7 @@ div.Sidebar_items{
   align-items: center;
   flex-direction: row;
   color:#2c3e50;
-  padding: 5px 15px;
+  padding: 2px 15px;
   transition: all 0.2s ease;
 }
 div.Sidebar_items:hover{
@@ -209,6 +211,10 @@ div.Sidebar_items:hover{
 }
 .space.active{
   background-color:#f0f7ff;
+}
+.current-page{
+  background-color:#d4ecf8;
+  border-radius: 1.25rem;
 }
 .space_avatar{
   width: 30px;

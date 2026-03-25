@@ -4,23 +4,19 @@ import com.ct240.backend.dto.request.SpaceUserRequest;
 import com.ct240.backend.dto.request.SpaceUserUpdateRequest;
 import com.ct240.backend.dto.response.SpaceMemberResponse;
 import com.ct240.backend.dto.response.SpaceUserResponse;
-import com.ct240.backend.entity.Space;
-import com.ct240.backend.entity.SpaceUser;
-import com.ct240.backend.entity.SpaceUserId;
-import com.ct240.backend.entity.User;
+import com.ct240.backend.entity.*;
 import com.ct240.backend.enums.Role;
 import com.ct240.backend.enums.Type;
 import com.ct240.backend.exception.AppException;
 import com.ct240.backend.exception.ErrorCode;
 import com.ct240.backend.mapper.SpaceUserMapper;
 import com.ct240.backend.mapper.UserMapper;
-import com.ct240.backend.repository.SpaceRepository;
-import com.ct240.backend.repository.SpaceUserRepository;
-import com.ct240.backend.repository.UserRepository;
+import com.ct240.backend.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -46,6 +42,13 @@ public class SpaceUserService {
 
     @Autowired
     NotificationService notificationService;
+
+    @Autowired
+    BoardUserService boardUserService;
+
+    @Autowired
+    TaskAssignmentService taskAssignmentService;
+
 
     public SpaceUserResponse addMember(String spaceId, SpaceUserRequest request, Authentication authentication){
 //        String username = authentication.getName();
@@ -191,6 +194,10 @@ public class SpaceUserService {
 
         spaceUserRepository.delete(spaceUser);
 
+        //// --- /// ----- KHI XOÁ THÌ XOÁ LUÔN TRONG BOARD VA TASK ASSIGNMENT /// --- ///
+        boardUserService.deleteUserFromAllBoards(userId, spaceId);
+        taskAssignmentService.unassignAllTasksInSpace(userId, spaceId);
+
     }
 
     ///authentication là người tự rời
@@ -205,6 +212,23 @@ public class SpaceUserService {
             throw new AppException(ErrorCode.OWNER_CANNOT_LEAVE_SPACE);
         }
 
+        List<SpaceUser> ownerOfSpace = spaceUserRepository.findBySpaceIdAndRole(spaceId, Role.OWNER);
+        List<SpaceUser> adminOfSpace = spaceUserRepository.findBySpaceIdAndRole(spaceId, Role.ADMIN);
+        List<SpaceUser> list = new ArrayList<>();
+        list.addAll(ownerOfSpace);
+        list.addAll(adminOfSpace);
+
+        notificationService.createNotificationForUsers(
+                list.stream().map(SpaceUser::getUser).toList(),
+                user.getUsername() + " đã rời khỏi space " + spaceUser.getSpace().getName() ,
+                Type.DELETE_USER_FROM_SPACE,
+                spaceId
+        );
+
         spaceUserRepository.delete(spaceUser);
+
+        //// --- /// ----- KHI XOÁ THÌ XOÁ LUÔN TRONG BOARD VA TASK ASSIGNMENT /// --- ///
+        boardUserService.deleteUserFromAllBoards(user.getId(), spaceId);
+        taskAssignmentService.unassignAllTasksInSpace(user.getId(), spaceId);
     }
 }

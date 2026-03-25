@@ -1,13 +1,16 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import axios from 'axios'
+import { computed, ref, onMounted, watch } from 'vue'
+import api from '@/services/api'
 import IconUser from '../icons/IconUser.vue';
 import BaseComment from '../base/BaseComment.vue';
 import IconDeleteTask from '../icons/IconDeleteTask.vue';
+import { useRoute } from 'vue-router'
 const emit = defineEmits(['close', 'update-task'])
 const close_detail_task =()=>{
   emit('close');
 }
+
+const route = useRoute()
 
 const props = defineProps({
   task: {
@@ -23,6 +26,99 @@ const isSaving = ref(false);
 const isEditingTaskName = ref(false);
 const editTaskNameValue = ref(props.task?.name || '');
 
+const boardId = computed(() => route.params?.idBoard)
+const showMemberPicker = ref(false)
+const memberSearch = ref('')
+const boardMembers = ref([]) // [{ userResponse: UserResponse, isOwner }]
+const taskAssignments = ref([]) // [UserResponse]
+const hoveredMember = ref(null) // UserResponse | null
+
+const getAvatarText = (name) => {
+  if (!name) return 'U'
+  const first = String(name).trim().charAt(0)
+  return first.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+}
+
+const getUserDisplayName = (u) => {
+  const name = u?.name?.trim?.() ? u.name.trim() : ''
+  return name || u?.username || 'Người dùng'
+}
+
+const fetchBoardMembers = async () => {
+  if (!boardId.value) return
+  try {
+    const res = await api.get(`/boards/${boardId.value}/members`)
+    boardMembers.value = res.data?.data ?? res.data ?? []
+  } catch (err) {
+    console.error('Load board members error:', err)
+  }
+}
+
+const fetchTaskAssignments = async () => {
+  if (!props.task?.id) return
+  try {
+    const res = await api.get(`/tasks/${props.task.id}/assignments`)
+    taskAssignments.value = res.data?.data ?? res.data ?? []
+  } catch (err) {
+    console.error('Load task assignments error:', err)
+  }
+}
+
+const assignedUserIdSet = computed(() => {
+  return new Set(taskAssignments.value.map(u => u?.id).filter(Boolean))
+})
+
+const boardUsers = computed(() => {
+  return boardMembers.value.map(bm => bm?.userResponse).filter(Boolean)
+})
+
+const filteredBoardUsers = computed(() => {
+  const q = memberSearch.value.trim().toLowerCase()
+  if (!q) return boardUsers.value
+  return boardUsers.value.filter(u => {
+    const name = String(u?.name ?? '').toLowerCase()
+    const username = String(u?.username ?? '').toLowerCase()
+    return name.includes(q) || username.includes(q)
+  })
+})
+
+const openMemberPicker = () => {
+  showMemberPicker.value = true
+  memberSearch.value = ''
+  hoveredMember.value = null
+}
+
+const closeMemberPicker = () => {
+  showMemberPicker.value = false
+}
+
+const handleSelectMember = async (user) => {
+  if (!props.task?.id || !user?.id) return
+  try {
+    await api.post(`/tasks/${props.task.id}/assign`, { userId: user.id })
+    await fetchTaskAssignments()
+    closeMemberPicker()
+  } catch (e) {
+    console.error('Assign member to task error:', e)
+    alert('Không thể gán thành viên vào task!')
+  }
+}
+
+const handleUnassignMember = async (user) => {
+  if (!props.task?.id || !user?.id) return
+
+  const ok = window.confirm(`Bạn có chắc chắn muốn xóa ${getUserDisplayName(user)} khỏi task không?`)
+  if (!ok) return
+
+  try {
+    await api.delete(`/tasks/${props.task.id}/assign/${user.id}`)
+    await fetchTaskAssignments()
+  } catch (e) {
+    console.error('Unassign member from task error:', e)
+    alert('Không thể xóa thành viên khỏi task!')
+  }
+}
+
 const startEditingTaskName = () => {
     isEditingTaskName.value = true;
 };
@@ -36,13 +132,10 @@ const saveTaskInfo = async () => {
 
     if(!props.task?.id) return;
     try {
-        const token = localStorage.getItem('token');
-        await axios.put(`http://localhost:8080/api/tasks/${props.task.id}`, {
+        await api.put(`/tasks/${props.task.id}`, {
             name: editTaskNameValue.value.trim() || props.task.name,
             deadline: localDeadline.value,
             completed: props.task.completed || false
-        }, {
-            headers: { 'Authorization': `Bearer ${token}` }
         });
         isEditingTaskName.value = false;
         emit('update-task');
@@ -55,10 +148,7 @@ const handleDeleteTask = async () => {
     if(!props.task?.id) return;
     if (confirm(`Bạn có chắc chắn muốn xóa tác vụ "${props.task?.name}" không? Toàn bộ bình luận và dữ liệu liên quan sẽ bị xóa vĩnh viễn.`)) {
         try {
-            const token = localStorage.getItem('token');
-            await axios.delete(`http://localhost:8080/api/tasks/${props.task.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            await api.delete(`/tasks/${props.task.id}`);
             emit('update-task');
             close_detail_task();
         } catch (error) {
@@ -71,10 +161,7 @@ const handleDeleteTask = async () => {
 const fetchComments = async () => {
     if(!props.task?.id) return;
     try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`http://localhost:8080/api/tasks/${props.task.id}/comments`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await api.get(`/tasks/${props.task.id}/comments`);
         comments.value = res.data.data || res.data || [];
     } catch (err) {
         console.log("Load comments error or not found", err);
@@ -95,11 +182,8 @@ const handleSaveTask = async () => {
 const handlePostComment = async () => {
     if(!newComment.value.trim() || !props.task?.id) return;
     try {
-        const token = localStorage.getItem('token');
-        await axios.post(`http://localhost:8080/api/tasks/${props.task.id}/comments`, {
+        await api.post(`/tasks/${props.task.id}/comments`, {
             content: newComment.value.trim()
-        }, {
-            headers: { 'Authorization': `Bearer ${token}` }
         });
         newComment.value = '';
         fetchComments();
@@ -110,12 +194,19 @@ const handlePostComment = async () => {
 
 onMounted(() => {
     fetchComments();
+    fetchTaskAssignments();
+    fetchBoardMembers();
 });
 watch(() => props.task, (newVal) => {
     localDeadline.value = newVal?.deadline ? newVal.deadline.split('T')[0] : '';
     editTaskNameValue.value = newVal?.name || '';
     fetchComments();
+    fetchTaskAssignments();
 }, { deep: true });
+
+watch(() => boardId.value, () => {
+  fetchBoardMembers()
+})
 
 </script>
 
@@ -142,14 +233,104 @@ watch(() => props.task, (newVal) => {
         <div class="left-modal">
         <div
           class="modal-assign"
-          @keyup.enter="handleCreateCard" 
-          autofocus>
-          Thêm thành viên  +
+          role="button"
+          tabindex="0"
+          @click.stop="openMemberPicker"
+          @keydown.enter.stop="openMemberPicker"
+        >
+          Thêm thành viên <span class="plus-sign">+</span>
         </div>
+
         <div class="wrapper-deadline">
           <div>Hạn chót</div>
           <input class="Deadline" type="date" v-model="localDeadline" @change="saveDeadline"/>
         </div>
+
+        <div class="assigned-members">
+          <div
+            v-for="m in taskAssignments"
+            :key="m?.id"
+            class="assigned-member"
+          >
+            <div
+              class="avatar"
+              @mouseenter="hoveredMember = m"
+              @mouseleave="hoveredMember = null"
+            >
+              {{ getAvatarText(getUserDisplayName(m)) }}
+            </div>
+            <div
+              v-if="hoveredMember?.id === m?.id"
+              class="member-tooltip"
+            >
+              {{ getUserDisplayName(m) }} ({{ m?.username }})
+            </div>
+          </div>
+
+          <div class="assigned-member add" role="button" tabindex="0" @click.stop="openMemberPicker"
+               @keydown.enter.stop="openMemberPicker">
+            <div class="avatar add-avatar">+</div>
+          </div>
+        </div>
+        </div>
+
+        <div
+          v-if="showMemberPicker"
+          class="member-picker-overlay"
+          @click.self="closeMemberPicker"
+        >
+          <div class="member-picker">
+            <div class="member-picker-header">
+              <div class="member-picker-title">Thành viên</div>
+              <button class="member-picker-close" type="button" @click.stop="closeMemberPicker">
+                ×
+              </button>
+            </div>
+            <input
+              class="member-picker-search"
+              type="text"
+              placeholder="Tìm kiếm các thành viên"
+              v-model="memberSearch"
+            />
+            <div class="member-picker-list">
+              <div v-if="filteredBoardUsers.length === 0" class="member-picker-empty">
+                Không có thành viên phù hợp
+              </div>
+              <div
+                v-for="user in filteredBoardUsers"
+                :key="user.id"
+                class="member-picker-item"
+                :class="{ 'is-assigned': assignedUserIdSet.has(user.id) }"
+              >
+                <div class="member-picker-user" @click.stop="assignedUserIdSet.has(user.id) ? null : handleSelectMember(user)">
+                  <div class="avatar">{{ getAvatarText(getUserDisplayName(user)) }}</div>
+                  <div class="member-picker-user-info">
+                    <div class="member-picker-user-name">{{ getUserDisplayName(user) }}</div>
+                    <div class="member-picker-user-username">@{{ user.username }}</div>
+                  </div>
+                </div>
+
+                <button
+                  v-if="assignedUserIdSet.has(user.id)"
+                  class="member-remove-btn"
+                  type="button"
+                  @click.stop="handleUnassignMember(user)"
+                  title="Xóa khỏi task"
+                >
+                  ×
+                </button>
+                <button
+                  v-else
+                  class="member-assign-btn"
+                  type="button"
+                  @click.stop="handleSelectMember(user)"
+                  title="Thêm vào task"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="right-modal">
         <div class="comment_nav">
@@ -224,6 +405,8 @@ watch(() => props.task, (newVal) => {
   display: flex;
   flex-direction: column;
   justify-items: center;
+  position: relative;
+  overflow: visible;
 }
 .comment_nav{
   padding: 5px 4%;
@@ -300,9 +483,11 @@ watch(() => props.task, (newVal) => {
   justify-content: center; align-items: center; z-index: 1000;
 }
 .modal {
-  background: white; padding: 24px; border-radius: 1.25rem;
+  position: relative;
+  background: white; padding: 40px; border-radius: 1.25rem;
   width: 750px; max-width: 90%; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   font-family: "Quicksand", sans-serif;
+  overflow: visible;
 }
 .modal h2 { margin-top: 0; margin-bottom: 16px; font-size: 20px; }
 .modal-assign {
@@ -318,6 +503,242 @@ watch(() => props.task, (newVal) => {
 .modal-assign:hover {
   cursor: pointer;
   outline: none; border-color: #74c5e1;
+}
+
+.plus-sign{
+  margin-left: 6px;
+  font-weight: 800;
+  color: #1a5270;
+}
+
+.member-picker{
+  width: 680px;
+  max-width: 100%;
+  background: #fff;
+  border: 1px solid #d4ecf8;
+  border-radius: 1.25rem;
+  padding: 12px;
+  margin-bottom: 0;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.member-picker-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.member-picker-title{
+  font-weight: 700;
+  color: #2c3e50;
+}
+.member-picker-close{
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #d4ecf8;
+  background: white;
+  cursor: pointer;
+}
+.member-picker-close:hover{
+  background: #f0f7ff;
+}
+
+.member-picker-overlay{
+  position: absolute;
+  inset: 0;
+  background: rgba(232, 244, 250, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 70px 40px 40px;
+  z-index: 2001;
+  border-radius: 1.25rem;
+}
+.member-picker-search{
+  font-family: "Quicksand", sans-serif;
+  width: 100%;
+  border: 2px solid #74c5e1;
+  border-radius: 1.25rem;
+  padding: 10px 12px;
+  outline: none;
+}
+.member-picker-search:focus{
+  border-color: #38bdf8;
+}
+.member-picker-list{
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+  /* Vừa đủ hiển thị khoảng 2 dòng thành viên, còn lại sẽ cuộn */
+  max-height: 145px;
+}
+.member-picker-empty{
+  color: #6b8799;
+  font-size: 13px;
+  text-align: center;
+  padding: 16px 0;
+}
+.member-picker-item{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 1rem;
+  border: 1px solid #d4ecf8;
+  background: #fff;
+}
+.member-picker-item:hover{
+  background: #e8f4fa;
+}
+
+.member-picker-item.is-assigned{
+  opacity: 0.92;
+}
+.member-picker-item.is-assigned .member-picker-user{
+  cursor: default;
+}
+
+.member-picker-user{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.member-picker-user-info{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.member-picker-user-name{
+  font-size: 14px;
+  font-weight: 800;
+  color: #2c3e50;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 380px;
+}
+
+.member-picker-user-username{
+  font-size: 12px;
+  font-weight: 700;
+  color: #88a7b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-remove-btn{
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(217, 121, 152, 0.9);
+  background: #ffffff;
+  color: #d97998;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.member-remove-btn:hover{
+  background: #feedf3;
+}
+
+.member-assign-btn{
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #a0d8f1;
+  background: #f0f7ff;
+  color: #1a5270;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.assigned-members{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  margin-left:10px;
+}
+
+.assigned-member{
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  position: relative;
+}
+
+.assigned-member.add{
+  cursor: pointer;
+  user-select: none;
+}
+
+.avatar{
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e8f4fa;
+  color: #1a5270;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  border: 1px solid #a0d8f1;
+  flex: 0 0 auto;
+}
+
+.add-avatar{
+  background: #f0f7ff;
+}
+
+.member-name{
+  font-size: 14px;
+  color: #2c3e50;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-tooltip{
+  position: absolute;
+  top: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid #d4ecf8;
+  background: #fff;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  width: fit-content;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  z-index: 30000;
+  pointer-events: none;
 }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .btn-cancel, .btn-submit {

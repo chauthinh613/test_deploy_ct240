@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 
 const emit = defineEmits(['close'])
 
@@ -26,10 +26,7 @@ const passwords = ref({
 
 const fetchProfile = async () => {
   try {
-    const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8080/api/users/profile', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const res = await api.get('/users/profile')
     
     const data = res.data.data || res.data
     userInfo.value = data
@@ -65,19 +62,19 @@ const handleSave = async () => {
       }
       
       // Gọi API đổi mật khẩu
-      await axios.put('http://localhost:8080/api/users/update/password', {
+      await api.put('/users/update/password', {
         currentPassword: passwords.value.currentPassword,
         newPassword: passwords.value.newPassword
-      }, { headers })
+      })
       
       alert('Đổi mật khẩu thành công!')
       emit('close')
     } else {
       // Gọi API đổi tên (và avatar nếu có)
-      await axios.put('http://localhost:8080/api/users/update', {
+      await api.put('/users/update', {
         name: editName.value,
         avatarURL: userInfo.value.avatarURL // Lấy lại avatar hiện tại
-      }, { headers })
+      })
       
       alert('Cập nhật thông tin thành công!')
       emit('close')

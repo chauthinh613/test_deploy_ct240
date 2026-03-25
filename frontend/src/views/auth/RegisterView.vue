@@ -1,8 +1,7 @@
 <script setup>
-import api from '../../services/api.js'
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
 import LoginLayout from '@/components/layout/RegisterLayout.vue'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 
