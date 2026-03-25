@@ -106,7 +106,7 @@ const setupSSE = () => {
 
     sseAbortController = new AbortController();
 
-    fetchEventSource('http://localhost:8080/api/notifications/subscribe', {
+    fetchEventSource(`${api.defaults.baseURL}/notifications/subscribe`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`,

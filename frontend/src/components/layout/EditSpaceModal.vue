@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import { useRouter } from 'vue-router'
 import { workspaceStore } from '@/stores/workspaceStore.js'
 
@@ -41,10 +41,7 @@ const fetchSpace = async () => {
   if (!props.spaceId) return
   isFetching.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    const res = await axios.get(`http://localhost:8080/api/spaces/${props.spaceId}`, { headers })
+    const res = await api.get(`/spaces/${props.spaceId}`)
     const data = res.data?.data ?? res.data ?? {}
 
     spaceName.value = data.name ?? ''
@@ -72,9 +69,6 @@ const handleSave = async () => {
 
   isSaving.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
     const reqBody = {}
     const nextName = spaceName.value.trim()
     const nextDesc = spaceDesc.value.trim()
@@ -87,10 +81,9 @@ const handleSave = async () => {
       return
     }
 
-    const res = await axios.put(
-      `http://localhost:8080/api/spaces/${props.spaceId}`,
-      reqBody,
-      { headers }
+    const res = await api.put(
+      `/spaces/${props.spaceId}`,
+      reqBody
     )
 
     const updated = res.data?.data ?? res.data
@@ -122,10 +115,7 @@ const handleDelete = async () => {
 
   isDeleting.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    await axios.delete(`http://localhost:8080/api/spaces/${props.spaceId}`, { headers })
+    await api.delete(`/spaces/${props.spaceId}`)
 
     closeModal()
     router.push('/home')

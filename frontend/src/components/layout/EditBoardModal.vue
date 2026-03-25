@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import { useRouter } from 'vue-router'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -28,9 +28,7 @@ const currentUserId = ref('')
 
 onMounted(async () => {
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-    const res = await axios.get("http://localhost:8080/api/users/profile", { headers })
+    const res = await api.get("/users/profile")
     currentUserId.value = res.data.data?.id ?? res.data?.id
   } catch(e) {}
 })
@@ -48,10 +46,7 @@ const fetchBoard = async () => {
   if (!props.boardId) return
   isFetching.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    const res = await axios.get(`http://localhost:8080/api/boards/${props.boardId}`, { headers })
+    const res = await api.get(`/boards/${props.boardId}`)
     const data = res.data?.data ?? res.data ?? {}
 
     boardName.value = data.name ?? ''
@@ -75,12 +70,9 @@ const fetchBoard = async () => {
 const fetchMembers = async () => {
   if (!props.boardId || !spaceId.value) return
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
     const [boardRes, spaceRes] = await Promise.all([
-      axios.get(`http://localhost:8080/api/boards/${props.boardId}/members`, { headers }),
-      axios.get(`http://localhost:8080/api/spaces/${spaceId.value}/members`, { headers })
+      api.get(`/boards/${props.boardId}/members`),
+      api.get(`/spaces/${spaceId.value}/members`)
     ])
 
     // Update board members list
@@ -135,9 +127,6 @@ const handleSave = async () => {
 
   isSaving.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
     const reqBody = {
       isPrivate: isPrivate.value
     }
@@ -147,10 +136,9 @@ const handleSave = async () => {
     if (nextName) reqBody.name = nextName
     if (nextDesc) reqBody.description = nextDesc
 
-    await axios.put(
-      `http://localhost:8080/api/boards/${props.boardId}`,
-      reqBody,
-      { headers }
+    await api.put(
+      `/boards/${props.boardId}`,
+      reqBody
     )
 
     emit('board-updated')
@@ -172,9 +160,7 @@ const handleDeleteBoard = async () => {
 
   isDeleting.value = true;
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-    await axios.delete(`http://localhost:8080/api/boards/${props.boardId}`, { headers })
+    await api.delete(`/boards/${props.boardId}`)
     
     closeModal()
     router.push('/home')
@@ -188,13 +174,9 @@ const handleDeleteBoard = async () => {
 // 5. Handle Add Member
 const handleAddMember = async (userId) => {
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-    
-    await axios.post(
-      `http://localhost:8080/api/boards/${props.boardId}/members`,
-      { userId: userId, isOwner: false },
-      { headers }
+    await api.post(
+      `/boards/${props.boardId}/members`,
+      { userId: userId, isOwner: false }
     )
     
     // Re-fetch members to update UI
@@ -215,15 +197,12 @@ const handleRemoveMember = async (userId) => {
   if (!ok) return;
 
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-    
     if (isLeaving) {
-      await axios.delete(`http://localhost:8080/api/boards/${props.boardId}/members`, { headers })
+      await api.delete(`/boards/${props.boardId}/members`)
       closeModal()
       router.push('/home')
     } else {
-      await axios.delete(`http://localhost:8080/api/boards/${props.boardId}/members/${userId}`, { headers })
+      await api.delete(`/boards/${props.boardId}/members/${userId}`)
       // Re-fetch members to update UI
       await fetchMembers()
     }

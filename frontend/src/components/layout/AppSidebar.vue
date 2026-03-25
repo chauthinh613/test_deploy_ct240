@@ -11,7 +11,7 @@ import EditSpaceModal from './EditSpaceModal.vue'
 const router=useRouter();
 const route = useRoute();
 
-import axios from 'axios'; // ĐÃ THÊM: axios để gọi API
+import api from '@/services/api'; // ĐÃ THÊM: api service để gọi API
 
 const openSpaceId=ref(null);
 
@@ -30,9 +30,7 @@ const fetchWorkspaces = async () => {
     const token = localStorage.getItem("token");
     if (!token) return; // Nếu chưa đăng nhập thì thôi không gọi
 
-    const response = await axios.get("http://localhost:8080/api/spaces", {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const response = await api.get("/spaces");
     
     // Gán dữ liệu lấy được vào kho chung (Tùy cấu trúc API trả về mà bạn chỉnh .data cho đúng nhé)
     workspaceStore.workspaces = response.data.data || response.data; 

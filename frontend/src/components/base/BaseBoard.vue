@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 
 const props = defineProps({
   boardId: {
@@ -32,9 +32,7 @@ const fetchBoardMembers = async () => {
   if (!props.boardId) return
   isFetchingMembers.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-    const res = await axios.get(`http://localhost:8080/api/boards/${props.boardId}/members`, { headers })
+    const res = await api.get(`/boards/${props.boardId}/members`)
     boardMembers.value = res.data?.data ?? res.data ?? []
   } catch (e) {
     console.error('Load board members error:', e)

@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 
-import axios from 'axios';
+import api from '@/services/api';
 
 const props = defineProps({
   notification: {
@@ -21,19 +21,14 @@ const props = defineProps({
 const emit = defineEmits(['marked-read', 'deleted']);
 
 const handleAction = async () => {
-  const token = localStorage.getItem('token');
   try {
     if (!props.notification.readStatus) {
       // Chưa đọc -> Gọi API đổi trạng thái thành đã đọc
-      await axios.put(`http://localhost:8080/api/notifications/${props.notification.id}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put(`/notifications/${props.notification.id}`, {});
       emit('marked-read', props.notification.id);
     } else {
       // Đã đọc -> Gọi API xoá thông báo
-      await axios.delete(`http://localhost:8080/api/notifications/${props.notification.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/notifications/${props.notification.id}`);
       emit('deleted', props.notification.id);
     }
   } catch (error) {

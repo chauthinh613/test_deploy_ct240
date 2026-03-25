@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 
 // 1. Khai báo Props (nhận dữ liệu từ cha)
 const props = defineProps({
@@ -26,15 +26,12 @@ const handleCreateCard = async () => {
 
   isCreating.value = true;
   try {
-    const token = localStorage.getItem('token');
-    const headers = { 'Authorization': `Bearer ${token}` };
-
     // Body request (nhớ map đúng field với CardCreationRequest của backend)
     const requestBody = {
       name: newCardName.value 
     };
 
-    await axios.post(`http://localhost:8080/api/boards/${props.boardId}/cards`, requestBody, { headers });
+    await api.post(`/boards/${props.boardId}/cards`, requestBody);
 
     // Thành công: báo cho cha biết để tải lại danh sách, rồi đóng modal
     emit('created');
