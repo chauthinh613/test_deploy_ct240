@@ -34,7 +34,7 @@ const handleCreateCard = async () => {
       name: newCardName.value 
     };
 
-    await api.get(`/boards/${props.boardId}/cards`, requestBody, { headers });
+    await api.post(`/boards/${props.boardId}/cards`, requestBody);
 
     // Thành công: báo cho cha biết để tải lại danh sách, rồi đóng modal
     emit('created');
