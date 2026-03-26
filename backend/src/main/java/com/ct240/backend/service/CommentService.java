@@ -50,6 +50,12 @@ public class CommentService {
         comment.setCreateAt(new Date());
 
         List<User> users = taskAssignmentRepository.findAllUsersByTaskId(taskId);
+
+        // loại người đang comment ra
+        users = users.stream()
+                .filter(u -> !u.getId().equals(user.getId()))
+                .toList();
+
         notificationService.createNotificationForUsers(
                 users,
                 "Bạn có bình luận mới trong task được giao",

@@ -228,7 +228,7 @@ const fetchSpaceMember= async (SpaceId)=>{
   // Lấy danh sách member theo endpoint riêng (nếu backend có).
   // Nếu API của bạn trả về khác key, bạn chỉ cần chỉnh đoạn map ở dưới.
   try {
-    const MemberRes = await api.get(`/spaces/${SpaceId}/members`);
+    const MemberRes = await api.get(`/spaces/${SpaceId}/members?t=${Date.now()}`);
     const raw = MemberRes.data?.data ?? MemberRes.data ?? [];
     members.value = normalizeMembers(Array.isArray(raw) ? raw : (raw.members ?? []));
   } catch (e) {
@@ -278,6 +278,24 @@ watch(
     if(newId) fetchSpaceMember(newId)
   }
 )
+
+import { globalBus } from '@/stores/eventbus.js';
+
+watch(() => globalBus.signal, (newSignal) => {
+  if (!newSignal) return;
+  console.log("🕵️ SpaceMember: Nhận được tín hiệu từ globalBus:", newSignal);
+
+  const currentSpaceId = route.params.id;
+  if (newSignal.action === 'RELOAD_SPACE_MEMBERS' || newSignal.action === 'RELOAD_ALL' || newSignal.action === 'RELOAD_PAGE') {
+    if (newSignal.action === 'RELOAD_ALL' || newSignal.action === 'RELOAD_PAGE' || String(newSignal.spaceId) === String(currentSpaceId)) {
+      console.log(`🚀 SpaceMember: Tín hiệu khớp (${newSignal.action}). Đang thực hiện reload...`);
+      setTimeout(() => {
+        if (currentSpaceId) fetchSpaceMember(currentSpaceId);
+      }, 300);
+    }
+  }
+}, { deep: true });
+
 
 /**
  * Watch keyword: mỗi lần gõ 1 ký tự sẽ gọi API search.

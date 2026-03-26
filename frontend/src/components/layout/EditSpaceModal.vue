@@ -41,7 +41,10 @@ const fetchSpace = async () => {
   if (!props.spaceId) return
   isFetching.value = true
   try {
-    const res = await api.get(`/spaces/${props.spaceId}`)
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+
+    const res = await api.get(`/spaces/${props.spaceId}`, { headers })
     const data = res.data?.data ?? res.data ?? {}
 
     spaceName.value = data.name ?? ''
@@ -69,6 +72,9 @@ const handleSave = async () => {
 
   isSaving.value = true
   try {
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+
     const reqBody = {}
     const nextName = spaceName.value.trim()
     const nextDesc = spaceDesc.value.trim()
@@ -83,7 +89,8 @@ const handleSave = async () => {
 
     const res = await api.put(
       `/spaces/${props.spaceId}`,
-      reqBody
+      reqBody,
+      { headers }
     )
 
     const updated = res.data?.data ?? res.data
@@ -115,7 +122,10 @@ const handleDelete = async () => {
 
   isDeleting.value = true
   try {
-    await api.delete(`/spaces/${props.spaceId}`)
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+
+    await api.delete(`/spaces/${props.spaceId}`, { headers })
 
     closeModal()
     router.push('/home')

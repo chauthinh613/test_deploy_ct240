@@ -163,7 +163,6 @@ const props = defineProps({
     height: 10px;
     background-color: #a0d8f1;
     border-radius: 50%;
-    /* Optionally you can add a small padding or border if you want, but this is simple enough */
   }
   .right_navbar div:active{
     transform: scale(0.95);
@@ -171,11 +170,9 @@ const props = defineProps({
   .right_navbar_auth {
     display: flex;
     align-items: center;
-    gap: 15px; /* Tăng khoảng cách chút */
+    gap: 15px;
   }
-  
-  /* Tuỳ chỉnh Button trong Auth Page */
-  .auth-btn {
+   .auth-btn {
     width: 120px;
     font-weight: 600;
   }
@@ -185,7 +182,7 @@ const props = defineProps({
   }
   
   .login-btn:hover {
-    background-color: #d4ecf8 !important; /* Hover có màu đậm hơn chút xíu để nhận biết */
+    background-color: #d4ecf8 !important; 
   }
   
   .register-btn:hover {

@@ -5,16 +5,20 @@ import com.ct240.backend.dto.request.MoveTaskRequest;
 import com.ct240.backend.dto.request.TaskCreationRequest;
 import com.ct240.backend.dto.request.TaskUpdateRequest;
 import com.ct240.backend.dto.response.CardResponse;
+import com.ct240.backend.dto.response.SseResponse;
 import com.ct240.backend.dto.response.TaskResponse;
 import com.ct240.backend.entity.Board;
 import com.ct240.backend.entity.Card;
 import com.ct240.backend.entity.Task;
 import com.ct240.backend.entity.User;
+import com.ct240.backend.enums.Type;
+import com.ct240.backend.event.AppEvents;
 import com.ct240.backend.exception.AppException;
 import com.ct240.backend.exception.ErrorCode;
 import com.ct240.backend.mapper.TaskMapper;
 import com.ct240.backend.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -43,6 +47,9 @@ public class TaskService {
     @Autowired
     PermissionService permissionService;
 
+    @Autowired
+    ApplicationEventPublisher eventPublisher;
+
     public TaskResponse createTask (String cardId, TaskCreationRequest request, Authentication authentication){
         User user = permissionService.getUserAuth(authentication);
 
@@ -67,6 +74,13 @@ public class TaskService {
         task.setCard(card);
 
         taskRepository.save(task);
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.CARD_TASK_UPDATE)
+                        .spaceId(board.getSpace().getId())
+                        .build())
+        );
 
         return taskMapper.toTaskResponse(task);
 
@@ -127,6 +141,14 @@ public class TaskService {
         // update task
         taskMapper.updateTask(task, request);
         taskRepository.save(task);
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.CARD_TASK_UPDATE)
+                        .spaceId(board.getSpace().getId())
+                        .build())
+        );
+
         return taskMapper.toTaskResponse(task);
     }
 
@@ -155,6 +177,14 @@ public class TaskService {
         task.setCard(moveToCard);
 
         taskRepository.save(task);
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.CARD_TASK_UPDATE)
+                        .spaceId(board.getSpace().getId())
+                        .build())
+        );
+
         return taskMapper.toTaskResponse(task);
 
     }
@@ -181,6 +211,13 @@ public class TaskService {
 
         taskRepository.save(task);
 
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.CARD_TASK_UPDATE)
+                        .spaceId(board.getSpace().getId())
+                        .build())
+        );
+
         return taskMapper.toTaskResponse(task);
 
     }
@@ -199,5 +236,12 @@ public class TaskService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
         taskRepository.delete(task);
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.CARD_TASK_UPDATE)
+                        .spaceId(spaceId)
+                        .build())
+        );
     }
 }

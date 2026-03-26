@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import MainLayout from '@/components/layout/MainLayout.vue'
@@ -11,7 +11,7 @@ const isLoading = ref(true);
 
 const fetchAllSpacesAndBoards = async () => {
   try {
-    const response = await api.get("/spaces");
+    const response = await api.get(`/spaces?t=${Date.now()}`);
     
     let spaceData = response.data.data || response.data;
     if (!Array.isArray(spaceData)) spaceData = [];
@@ -20,7 +20,7 @@ const fetchAllSpacesAndBoards = async () => {
     const spacesWithBoards = await Promise.all(
       spaceData.map(async (space) => {
         try {
-          const boardRes = await api.get(`/spaces/${space.id}/boards`);
+          const boardRes = await api.get(`/spaces/${space.id}/boards?t=${Date.now()}`);
           return {
             ...space,
             boards: boardRes.data.data || boardRes.data || []
@@ -44,6 +44,20 @@ const fetchAllSpacesAndBoards = async () => {
 onMounted(() => {
   fetchAllSpacesAndBoards();
 });
+
+import { globalBus } from '@/stores/eventbus.js';
+
+watch(() => globalBus.signal, (newSignal) => {
+  if (!newSignal) return;
+  console.log("🕵️ BoardView: Nhận được tín hiệu từ globalBus:", newSignal);
+
+  if (newSignal.action === 'RELOAD_ALL' || newSignal.action === 'RELOAD_PAGE' || newSignal.action === 'RELOAD_BOARDS') {
+    console.log(`🚀 BoardView: Tín hiệu khớp (${newSignal.action}). Đang thực hiện reload...`);
+    setTimeout(() => {
+      fetchAllSpacesAndBoards();
+    }, 300);
+  }
+}, { deep: true });
 
 const goToBoard = (spaceId, boardId) => {
   router.push(`/spaces/${spaceId}/boards/${boardId}/cards`);

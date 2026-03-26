@@ -1,6 +1,5 @@
 <script setup>
 import { computed } from 'vue';
-
 import api from '@/services/api';
 
 const props = defineProps({

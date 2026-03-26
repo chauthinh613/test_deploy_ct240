@@ -6,7 +6,7 @@ const emit = defineEmits(['close-modal', 'create-board']);
 
 const boardName = ref('');
 const boardDescription = ref('');
-const boardMode = ref('');
+const boardMode = ref('false');
 
 // Hàm xử lý khi bấm nút Tạo mới
 const handleCreate = () => {

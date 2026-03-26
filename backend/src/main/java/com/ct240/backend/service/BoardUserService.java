@@ -3,10 +3,12 @@ package com.ct240.backend.service;
 import com.ct240.backend.dto.request.BoardUserRequest;
 import com.ct240.backend.dto.response.BoardMemberResponse;
 import com.ct240.backend.dto.response.BoardUserResponse;
+import com.ct240.backend.dto.response.SseResponse;
 import com.ct240.backend.dto.response.UserResponse;
 import com.ct240.backend.entity.*;
 import com.ct240.backend.enums.Role;
 import com.ct240.backend.enums.Type;
+import com.ct240.backend.event.AppEvents;
 import com.ct240.backend.exception.AppException;
 import com.ct240.backend.exception.ErrorCode;
 import com.ct240.backend.mapper.BoardUserMapper;
@@ -15,6 +17,8 @@ import com.ct240.backend.repository.BoardRepository;
 import com.ct240.backend.repository.BoardUserRepository;
 import com.ct240.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -41,10 +45,14 @@ public class BoardUserService {
     UserMapper userMapper;
 
     @Autowired
+    @Lazy
     NotificationService notificationService;
 
     @Autowired
     TaskAssignmentService taskAssignmentService;
+
+    @Autowired
+    ApplicationEventPublisher eventPublisher;
 
     ///         NGƯỜI CÓ QUYỀN THÊM MEMBER VÀO BOARD       ///
     /// 1. OWNER, ADMIN của SPACE                          ///
@@ -62,18 +70,31 @@ public class BoardUserService {
                 () -> new AppException(ErrorCode.USER_NOT_FOUND)
         );
 
-        // - CHECK 1 - //
-        Role role = permissionService.getRoleInSpaceByBoardId(currentUser.getId(), boardId);
-        // - CHECK 2 - //
-        boolean isBoardOwner = permissionService.isOwnerOfBoard(currentUser.getId(), boardId);
-        // - CHECK 3 - //
-        boolean isPrivate = boardRepository.isPrivate(boardId);
+//        // - CHECK 1 - //
+//        Role role = permissionService.getRoleInSpaceByBoardId(currentUser.getId(), boardId);
+//        // - CHECK 2 - //
+//        boolean isBoardOwner = permissionService.isOwnerOfBoard(currentUser.getId(), boardId);
+//        // - CHECK 3 - //
+//        boolean isPrivate = boardRepository.isPrivate(boardId);
+//
+//        if(! (
+//                role == Role.OWNER || role == Role.ADMIN // - CHECK 1 - //
+//                || isBoardOwner // - CHECK 2 - //
+//                || (role == Role.MEMBER && !isPrivate))){ // - CHECK 3 - //
+//            throw new AppException(ErrorCode.UNAUTHORIZED);
+//        }
 
-        if(! (
-                role == Role.OWNER || role == Role.ADMIN // - CHECK 1 - //
-                || isBoardOwner // - CHECK 2 - //
-                || (role == Role.MEMBER && !isPrivate))){ // - CHECK 3 - //
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+        Role role = permissionService.getRoleInSpaceByBoardId(currentUser.getId(), boardId);
+
+        // Nếu là OWNER hoặc ADMIN của space thì cho qua luôn, không cần check board
+        if (role == Role.OWNER || role == Role.ADMIN) {
+            // OK, tiếp tục
+        } else {
+            // Không phải OWNER/ADMIN space thì mới check board owner
+            boolean isBoardOwner = permissionService.isOwnerOfBoard(currentUser.getId(), boardId);
+            if (!isBoardOwner) {
+                throw new AppException(ErrorCode.UNAUTHORIZED);
+            }
         }
 
         //nếu người đó trong board rồi thì cũng hông được
@@ -99,6 +120,13 @@ public class BoardUserService {
                 "Bạn được đã thêm vào bảng " + board.getName() ,
                 Type.ADD_USER_IN_BOARD,
                 boardId
+        );
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.SPACE_BOARD_UPDATE)
+                        .spaceId(board.getSpace().getId())
+                        .build())
         );
 
         boardUserRepository.save(boardUser);
@@ -136,14 +164,18 @@ public class BoardUserService {
     public void deleteUserFromBoard(String boardId, String userId, Authentication authentication){
         User currentUser = permissionService.getUserAuth(authentication);
 
-        // - CHECK 1 - //
         Role role = permissionService.getRoleInSpaceByBoardId(currentUser.getId(), boardId);
-        // - CHECK 2 - //
-        boolean isBoardOwner = permissionService.isOwnerOfBoard(currentUser.getId(), boardId);
-        if(! (
-                role == Role.OWNER || role == Role.ADMIN // - CHECK 1 - //
-                        || isBoardOwner ))// - CHECK 2 - //
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+
+        // Nếu là OWNER hoặc ADMIN của space thì cho qua luôn, không cần check board
+        if (role == Role.OWNER || role == Role.ADMIN) {
+            // OK, tiếp tục
+        } else {
+            // Không phải OWNER/ADMIN space thì mới check board owner
+            boolean isBoardOwner = permissionService.isOwnerOfBoard(currentUser.getId(), boardId);
+            if (!isBoardOwner) {
+                throw new AppException(ErrorCode.UNAUTHORIZED);
+            }
+        }
 
         //cái này sẽ check luôn có trong board đó hay không
         BoardUser boardUser = boardUserRepository.findByUserIdAndBoardId(userId, boardId).orElseThrow(
@@ -161,11 +193,21 @@ public class BoardUserService {
                 boardId
         );
 
-        boardUserRepository.delete(boardUser);
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.SPACE_BOARD_UPDATE)
+                        .spaceId(boardUser.getBoard().getId())
+                        .build())
+        );
 
+        //sseEmitterService.createSseResponse(boardUser.getBoard().getSpace().getId(), Type.);
+
+        boardUserRepository.delete(boardUser);
 
         ///xoá tất cả các task người đó dược giao
         taskAssignmentService.unassignAllTasksInBoard(deletedUser.getId(), boardId);
+
+
 
     }
 

@@ -1,6 +1,8 @@
 package com.ct240.backend.service;
 
+import com.ct240.backend.dto.response.SseResponse;
 import com.ct240.backend.entity.User;
+import com.ct240.backend.enums.Type;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class SseEmitterService {
+
     //trạm phát sóng ->
     // người dùng phải đăng ký tham gia vô trạm này
 
@@ -48,9 +51,19 @@ public class SseEmitterService {
             }
         }
     }
-//    public void sendToUsers(List<String> userIds, Object data){
-//        for (String userId : userIds) {
-//            sendToUser(userId, data);
-//        }
-//    }
+
+    public void sendToUsers(List<String> userIds, SseResponse response){
+        for (String userId : userIds) {
+            sendToUser(userId, response);
+        }
+    }
+
+
+    ///event listener sẽ gọi hàm này
+    public void processSpaceUpdate(String spaceId, Type type, List<String> userIds) {
+        SseResponse sseResponse = new SseResponse();
+        sseResponse.setType(type);
+        sendToUsers(userIds, sseResponse);
+    }
+
 }

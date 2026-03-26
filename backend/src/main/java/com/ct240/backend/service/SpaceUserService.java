@@ -4,15 +4,19 @@ import com.ct240.backend.dto.request.SpaceUserRequest;
 import com.ct240.backend.dto.request.SpaceUserUpdateRequest;
 import com.ct240.backend.dto.response.SpaceMemberResponse;
 import com.ct240.backend.dto.response.SpaceUserResponse;
+import com.ct240.backend.dto.response.SseResponse;
 import com.ct240.backend.entity.*;
 import com.ct240.backend.enums.Role;
 import com.ct240.backend.enums.Type;
+import com.ct240.backend.event.AppEvents;
 import com.ct240.backend.exception.AppException;
 import com.ct240.backend.exception.ErrorCode;
 import com.ct240.backend.mapper.SpaceUserMapper;
 import com.ct240.backend.mapper.UserMapper;
 import com.ct240.backend.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -41,13 +45,16 @@ public class SpaceUserService {
     PermissionService permissionService;
 
     @Autowired
-    NotificationService notificationService;
-
-    @Autowired
     BoardUserService boardUserService;
 
     @Autowired
     TaskAssignmentService taskAssignmentService;
+
+    @Autowired
+    ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    NotificationService notificationService;
 
 
     public SpaceUserResponse addMember(String spaceId, SpaceUserRequest request, Authentication authentication){
@@ -95,12 +102,21 @@ public class SpaceUserService {
         }
         spaceUser.setRole(request.getRole());
 
+
         notificationService.createNotification(
                 addedUser,
                 "Bạn được đã thêm vào space " + space.getName(),
                 Type.ADD_USER_IN_SPACE,
                 spaceId
         );
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.SPACE_MEMBER_UPDATE)
+                        .spaceId(spaceId)
+                        .build())
+        );
+        //sseEmitterService.createSseResponse(spaceId, Type.SPACE_MEMBER_UPDATE);
 
         spaceUserRepository.save(spaceUser);
 
@@ -132,6 +148,12 @@ public class SpaceUserService {
                 .collect(Collectors.toList());
     }
 
+
+    public List<String> getAllUserIdsInSpace(String spaceId){
+        var listUsers = spaceUserRepository.findUsersBySpaceId(spaceId);
+        return listUsers.stream().map(User::getId).collect(Collectors.toList());
+    }
+
     public SpaceUserResponse updateRole(String spaceId, String userId, SpaceUserUpdateRequest request, Authentication authentication){
         User currentUser = permissionService.getUserAuth(authentication);
 
@@ -153,9 +175,16 @@ public class SpaceUserService {
 
         notificationService.createNotification(
                 changedRoleUser,
-                "Bạn được đã được đổi vai trò trong space " + spaceUser.getSpace().getName() + " thành " + request.getRole(),
+                "Bạn đã được đổi vai trò trong space " + spaceUser.getSpace().getName() + " thành " + request.getRole(),
                 Type.CHANGE_ROLE_SPACE,
                 spaceId
+        );
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.SPACE_MEMBER_UPDATE)
+                        .spaceId(spaceId)
+                        .build())
         );
 
         spaceUserRepository.save(spaceUser);
@@ -187,7 +216,7 @@ public class SpaceUserService {
 
         notificationService.createNotification(
                 deletedUser,
-                "Bạn được đã bị xoá khỏi space " + spaceUser.getSpace().getName(),
+                "Bạn đã bị xoá khỏi space " + spaceUser.getSpace().getName(),
                 Type.DELETE_USER_FROM_SPACE,
                 spaceId
         );
@@ -197,6 +226,14 @@ public class SpaceUserService {
         //// --- /// ----- KHI XOÁ THÌ XOÁ LUÔN TRONG BOARD VA TASK ASSIGNMENT /// --- ///
         boardUserService.deleteUserFromAllBoards(userId, spaceId);
         taskAssignmentService.unassignAllTasksInSpace(userId, spaceId);
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.SPACE_BOARD_UPDATE)
+                        .spaceId(spaceId)
+                        .build())
+        );
+
 
     }
 
@@ -225,10 +262,18 @@ public class SpaceUserService {
                 spaceId
         );
 
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.SPACE_MEMBER_UPDATE)
+                        .spaceId(spaceId)
+                        .build())
+        );
+
         spaceUserRepository.delete(spaceUser);
 
         //// --- /// ----- KHI XOÁ THÌ XOÁ LUÔN TRONG BOARD VA TASK ASSIGNMENT /// --- ///
         boardUserService.deleteUserFromAllBoards(user.getId(), spaceId);
         taskAssignmentService.unassignAllTasksInSpace(user.getId(), spaceId);
+
     }
 }

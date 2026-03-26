@@ -7,6 +7,7 @@ import Card from '@/components/base/BaseBoard.vue'
 import Button from '@/components/base/BaseButton.vue'
 import CreateBoardModal from '@/components/layout/CreateBoardModal.vue'; 
 import router from '@/router'
+import { globalBus } from '@/stores/eventbus.js';
 
 const route=useRoute();
 // 2. Thêm biến để điều khiển ẩn/hiện Modal
@@ -69,14 +70,17 @@ const boards=ref([]);
 const fetchSpaceBoard= async (SpaceId)=>{
   isLoading.value=true;
   try{
-  const SpaceRes= await api.get(`/spaces/${SpaceId}`);
-  spaceData.value=SpaceRes.data.data || SpaceRes.data;
+    console.log(`📡 [SpaceView] Fetching boards for space: ${SpaceId}`);
+    const SpaceRes= await api.get(`/spaces/${SpaceId}?t=${Date.now()}`);
+    spaceData.value=SpaceRes.data.data || SpaceRes.data;
 
-  const BoardRes =await api.get(`/spaces/${SpaceId}/boards`);
-  boards.value=BoardRes.data.data|| BoardRes.data;
+    const BoardRes =await api.get(`/spaces/${SpaceId}/boards?t=${Date.now()}`);
+    const boardListData = BoardRes.data.data || BoardRes.data || [];
+    boards.value = Array.isArray(boardListData) ? boardListData : [];
+    console.log(`✅ [SpaceView] Received ${boards.value.length} boards for space ${SpaceId}.`, boards.value);
   }
   catch(error){
-    console.error("Lỗi khi lấy dữ liệu bảng:",error);
+    console.error("❌ [SpaceView] Lỗi khi lấy dữ liệu bảng:", error);
     boards.value=[];
   }
   finally{
@@ -95,6 +99,29 @@ watch(
     if(newId) fetchSpaceBoard(newId)
   }
 )
+
+watch(() => globalBus.signal, (newSignal) => {
+  if (!newSignal) return;
+  console.log("🕵️ SpaceView watch signal:", newSignal.action, newSignal);
+
+  const currentSpaceId = route.params.id;
+  if (!currentSpaceId) return;
+
+  if (newSignal.action === 'RELOAD_BOARDS' || newSignal.action === 'RELOAD_ALL' || newSignal.action === 'RELOAD_PAGE') {
+    // Chỉ reload nếu đúng space hoặc là reload_all/page
+    const incomingSpaceId = String(newSignal.spaceId || '');
+    const isMatch = newSignal.action === 'RELOAD_ALL' || newSignal.action === 'RELOAD_PAGE' || incomingSpaceId === String(currentSpaceId);
+    
+    if (isMatch) {
+      console.log(`🚀 SpaceView: Tín hiệu khớp (${newSignal.action}). Đang thực hiện reload...`);
+      setTimeout(() => {
+        fetchSpaceBoard(currentSpaceId);
+      }, 500); // Tăng delay lên một chút cho chắc chắn
+    } else {
+      console.log(`⏭️ SpaceView: Tín hiệu không dành cho space này (${incomingSpaceId} != ${currentSpaceId})`);
+    }
+  }
+}, { deep: true });
 
 const goTo_BoardCardView=(boardId)=>{
   const spaceId = route.params.id;

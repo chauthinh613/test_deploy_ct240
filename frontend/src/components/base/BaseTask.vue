@@ -84,8 +84,9 @@ label{
     width: 93%;
     background-color: #ffffff;
     border-radius: 0.5rem;
-    height: 30px;
-    padding: 10px;
+    min-height: 30px;
+    height: fit-content;
+    padding: 5px;
     margin-bottom: 5px;
     cursor: pointer;
 }

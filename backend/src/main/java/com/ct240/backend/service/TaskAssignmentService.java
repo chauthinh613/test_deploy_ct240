@@ -15,6 +15,7 @@ import com.ct240.backend.repository.TaskAssignmentRepository;
 import com.ct240.backend.repository.TaskRepository;
 import com.ct240.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 

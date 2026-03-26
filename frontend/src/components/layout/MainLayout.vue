@@ -4,152 +4,98 @@ import Sidebar from '../layout/AppSidebar.vue'
 import CreateSpace from './CreateSpace.vue';
 import NotificationCard from '../base/NotificationCard.vue';
 import ProfileSetting from './ProfileSetting.vue';
-import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import api from '@/services/api'
-import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { useRouter } from 'vue-router'
+import { notificationStore } from '@/stores/notificationStore.js';
 
- 
 const router = useRouter();
-const username=ref('');
+const username = ref('');
 
 const isModalOpen = ref(false);
-//Ham mo hop thoai
-const openModal = () => {
-  isModalOpen.value = true;
-}
-
-const closeModal = () => {
-  isModalOpen.value = false;
-}
+const openModal = () => isModalOpen.value = true;
+const closeModal = () => isModalOpen.value = false;
 
 let isToggling = false;
-
 const isShowSummaryProfile = ref(false);
 const profileRef = ref(null);
 
-const SummaryProfile=()=>{
-    isToggling = true;
-    isShowSummaryProfile.value = !isShowSummaryProfile.value;
-    if (isShowSummaryProfile.value) {
-        isShowNotification.value = false;
-    }
-    setTimeout(() => { isToggling = false; }, 0);
+const SummaryProfile = () => {
+  isToggling = true;
+  isShowSummaryProfile.value = !isShowSummaryProfile.value;
+  if (isShowSummaryProfile.value) isShowNotification.value = false;
+  setTimeout(() => { isToggling = false; }, 0);
 }
 
 const isProfileSettingOpen = ref(false);
 const openProfileSetting = () => {
-    isProfileSettingOpen.value = true;
-    isShowSummaryProfile.value = false;
+  isProfileSettingOpen.value = true;
+  isShowSummaryProfile.value = false;
 }
 
 const isShowNotification = ref(false);
 const notificationRef = ref(null);
 
-const toggleNotification=()=>{
-    isToggling = true;
-    isShowNotification.value = !isShowNotification.value;
-    if (isShowNotification.value) {
-        isShowSummaryProfile.value = false;
-    }
-    setTimeout(() => { isToggling = false; }, 0);
+const toggleNotification = () => {
+  isToggling = true;
+  isShowNotification.value = !isShowNotification.value;
+  if (isShowNotification.value) isShowSummaryProfile.value = false;
+  setTimeout(() => { isToggling = false; }, 0);
 }
 
 const handleClickOutside = (event) => {
-    if (isToggling) return;
-    if (isShowNotification.value && notificationRef.value && !notificationRef.value.contains(event.target)) {
-        isShowNotification.value = false;
-    }
-    if (isShowSummaryProfile.value && profileRef.value && !profileRef.value.contains(event.target)) {
-        isShowSummaryProfile.value = false;
-    }
+  if (isToggling) return;
+  if (isShowNotification.value && notificationRef.value && !notificationRef.value.contains(event.target)) {
+    isShowNotification.value = false;
+  }
+  if (isShowSummaryProfile.value && profileRef.value && !profileRef.value.contains(event.target)) {
+    isShowSummaryProfile.value = false;
+  }
 }
 
-const fetchUserProfile=async()=>{
-    try{
-        const response = await api.get("/users/profile");
-        username.value=response.data.data.name;
+const fetchUserProfile = async () => {
+  try {
+    const response = await api.get("/users/profile");
+    username.value = response.data.data.name;
+  }
+  catch (error) {
+    if (error.response && error.response.status === 401) {
+      router.push('/');
     }
-    catch(error){
-        console.error("Lỗi khi lấy dữ liệu");
-        if (error.response && error.response.status === 401) {
-       console.log("Token không hợp lệ hoặc đã hết hạn!");
-       router.push('/');
-    }
-    username.value='Guest';
-    }
-    
+    username.value = 'Guest';
+  }
 }
 
-const notifications = ref([]);
+const notifications = computed(() => notificationStore.notifications);
 
 const hasUnreadNotifications = computed(() => {
-    return notifications.value.some(notify => !notify.readStatus);
+  return notificationStore.notifications.some(notify => !notify.readStatus);
 });
 
 const fetchNotifications = async () => {
-    try {
-        const response = await api.get("/notifications");
-        const data = response.data;
-        // Xử lý payload và sắp xếp theo thời gian mới nhất (createAt giảm dần)
-        const rawData = Array.isArray(data) ? data : (data.data || []);
-        notifications.value = rawData.sort((a, b) => new Date(b.createAt) - new Date(a.createAt));
-    } catch (error) {
-        console.error("Lỗi khi lấy thông báo", error);
-    }
+  try {
+    const response = await api.get("/notifications");
+    const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
+    notificationStore.setNotifications(rawData);
+  } catch (error) {
+    console.error("Lỗi khi lấy thông báo", error);
+  }
 }
 
-let sseAbortController = null;
-const setupSSE = () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+// SSE logic removed here as it is now handled globally in App.vue
 
-    sseAbortController = new AbortController();
-
-    fetchEventSource(`${api.defaults.baseURL}/notifications/subscribe`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'text/event-stream'
-        },
-        signal: sseAbortController.signal,
-        openWhenHidden: true,
-        onopen(response) {
-            console.log("Đã đăng ký trạm SSE thành công.");
-        },
-        onmessage(event) {
-            try {
-                if (event.data) {
-                    const newNotification = JSON.parse(event.data);
-                    notifications.value.unshift(newNotification);
-                }
-            } catch (error) {
-                console.error("Lỗi parse dữ liệu SSE:", error);
-            }
-        },
-        onerror(error) {
-            console.error("Lỗi SSE:", error);
-            throw error;
-        }
-    });
-};
-
-onMounted(()=>{
-    fetchUserProfile();
-    fetchNotifications();
-    setupSSE();
-    document.addEventListener('click', handleClickOutside);
+onMounted(() => {
+  fetchUserProfile();
+  fetchNotifications();
+  document.addEventListener('click', handleClickOutside);
 })
 
-onUnmounted(()=>{
-    document.removeEventListener('click', handleClickOutside);
-    if (sseAbortController) {
-        sseAbortController.abort();
-    }
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
 })
 
-const handleLogOut=()=>{
-    const isConfirm = window.confirm("Bạn có chắc chắn muốn đăng xuất không?");
+const handleLogOut = () => {
+  const isConfirm = window.confirm("Bạn có chắc chắn muốn đăng xuất không?");
   if (isConfirm) {
     localStorage.removeItem('token');
     router.push('/');
@@ -183,8 +129,8 @@ const handleLogOut=()=>{
                 v-for="notify in notifications" 
                 :key="notify.id" 
                 :notification="notify" 
-                @marked-read="(id) => { const n = notifications.find(x => x.id === id); if(n) n.readStatus = true; }"
-                @deleted="(id) => { notifications = notifications.filter(x => x.id !== id); }"
+                @marked-read="(id) => notificationStore.markAsRead(id)"
+                @deleted="(id) => notificationStore.removeNotification(id)"
             />
             <div v-if="notifications.length === 0" class="empty-state">
                 Không có thông báo nào

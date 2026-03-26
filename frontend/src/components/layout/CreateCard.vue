@@ -26,12 +26,15 @@ const handleCreateCard = async () => {
 
   isCreating.value = true;
   try {
+    const token = localStorage.getItem('token');
+    const headers = { 'Authorization': `Bearer ${token}` };
+
     // Body request (nhớ map đúng field với CardCreationRequest của backend)
     const requestBody = {
       name: newCardName.value 
     };
 
-    await api.post(`/boards/${props.boardId}/cards`, requestBody);
+    await api.get(`/boards/${props.boardId}/cards`, requestBody, { headers });
 
     // Thành công: báo cho cha biết để tải lại danh sách, rồi đóng modal
     emit('created');

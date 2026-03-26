@@ -239,6 +239,4 @@ const closeForm=()=>{
     padding-bottom: 8px;
     background-color: #d4ecf8;
 }
-
-
 </style>

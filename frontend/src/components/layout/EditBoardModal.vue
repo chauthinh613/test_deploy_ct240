@@ -28,7 +28,9 @@ const currentUserId = ref('')
 
 onMounted(async () => {
   try {
-    const res = await api.get("/users/profile")
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+    const res = await api.get("/users/profile", { headers })
     currentUserId.value = res.data.data?.id ?? res.data?.id
   } catch(e) {}
 })
@@ -46,7 +48,10 @@ const fetchBoard = async () => {
   if (!props.boardId) return
   isFetching.value = true
   try {
-    const res = await api.get(`/boards/${props.boardId}`)
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+
+    const res = await api.get(`/boards/${props.boardId}`, { headers })
     const data = res.data?.data ?? res.data ?? {}
 
     boardName.value = data.name ?? ''
@@ -70,9 +75,12 @@ const fetchBoard = async () => {
 const fetchMembers = async () => {
   if (!props.boardId || !spaceId.value) return
   try {
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+
     const [boardRes, spaceRes] = await Promise.all([
-      api.get(`/boards/${props.boardId}/members`),
-      api.get(`/spaces/${spaceId.value}/members`)
+      api.get(`/boards/${props.boardId}/members`, { headers }),
+      api.get(`/spaces/${spaceId.value}/members`, { headers })
     ])
 
     // Update board members list
@@ -127,6 +135,9 @@ const handleSave = async () => {
 
   isSaving.value = true
   try {
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+
     const reqBody = {
       isPrivate: isPrivate.value
     }
@@ -138,7 +149,8 @@ const handleSave = async () => {
 
     await api.put(
       `/boards/${props.boardId}`,
-      reqBody
+      reqBody,
+      { headers }
     )
 
     emit('board-updated')
@@ -160,7 +172,9 @@ const handleDeleteBoard = async () => {
 
   isDeleting.value = true;
   try {
-    await api.delete(`/boards/${props.boardId}`)
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+    await api.delete(`/boards/${props.boardId}`, { headers })
     
     closeModal()
     router.push('/home')
@@ -174,9 +188,13 @@ const handleDeleteBoard = async () => {
 // 5. Handle Add Member
 const handleAddMember = async (userId) => {
   try {
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+    
     await api.post(
       `/boards/${props.boardId}/members`,
-      { userId: userId, isOwner: false }
+      { userId: userId, isOwner: false },
+      { headers }
     )
     
     // Re-fetch members to update UI
@@ -197,12 +215,15 @@ const handleRemoveMember = async (userId) => {
   if (!ok) return;
 
   try {
+    const token = localStorage.getItem('token')
+    const headers = { Authorization: `Bearer ${token}` }
+    
     if (isLeaving) {
-      await api.delete(`/boards/${props.boardId}/members`)
+      await api.delete(`/boards/${props.boardId}/members`, { headers })
       closeModal()
       router.push('/home')
     } else {
-      await api.delete(`/boards/${props.boardId}/members/${userId}`)
+      await api.delete(`/boards/${props.boardId}/members/${userId}`, { headers })
       // Re-fetch members to update UI
       await fetchMembers()
     }

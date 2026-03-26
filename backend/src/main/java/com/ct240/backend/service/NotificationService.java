@@ -4,11 +4,13 @@ import com.ct240.backend.dto.response.NotificationResponse;
 import com.ct240.backend.entity.Notification;
 import com.ct240.backend.entity.User;
 import com.ct240.backend.enums.Type;
+import com.ct240.backend.event.AppEvents;
 import com.ct240.backend.exception.AppException;
 import com.ct240.backend.exception.ErrorCode;
 import com.ct240.backend.mapper.NotificationMapper;
 import com.ct240.backend.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +30,7 @@ public class NotificationService {
     PermissionService permissionService;
 
     @Autowired
-    SseEmitterService sseEmitterService;
+    private ApplicationEventPublisher eventPublisher;
 
     ///lấy danh sách thông báo
     public List<NotificationResponse> getAllNotifications(Authentication authentication){
@@ -52,10 +54,11 @@ public class NotificationService {
         notification.setReferenceId(referenceId);
         notification.setCreateAt(new Date());
 
-        notificationRepository.save(notification);
+        Notification savedNotification = notificationRepository.save(notification);
 
         // push realtime
-        sseEmitterService.sendToUser(user.getId(), notificationMapper.toResponse(notification));
+        //sseEmitterService.sendToUser(user.getId(), notificationMapper.toResponse(notification));
+        eventPublisher.publishEvent(new AppEvents.NotificationEvent(savedNotification));
     }
 
     public void createNotificationForUsers(List<User> users, String content, Type type, String referenceId){

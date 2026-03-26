@@ -14,7 +14,7 @@ public interface BoardRepository extends JpaRepository<Board, String> {
     List<Board> findBySpaceIdAndIsPrivateFalse(String spaceId);
 
     @Query("SELECT b.isPrivate FROM Board b WHERE b.id = :boardId")
-    boolean isPrivate(@Param("boardId") String boardId);
+    Boolean isPrivate(@Param("boardId") String boardId);
 
     @Query("SELECT b.space " +
             "FROM Board b " +

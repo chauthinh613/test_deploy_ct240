@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { workspaceStore } from '@/stores/workspaceStore.js'; 
-import api from '@/services/api';
+import api from '@/services/api'
 import { useRouter } from 'vue-router'
 
 const emit=defineEmits(['close-modal']);
@@ -27,10 +27,11 @@ const handleCreateSpace = async () => {
       return;
     }
     console.log("Đang gọi API tạo Space...");
-    const response = await api.post("/spaces",
+    const response = await  api.get("/spaces",
       { name: newSpaceName.value,
         description: newSpaceDesc.value
-       }
+       },
+      { headers: { 'Authorization': `Bearer ${token}` } }
     );
     const newWorkspace = response.data.data;
     workspaceStore.addWorkspace(newWorkspace);

@@ -5,13 +5,14 @@ import IconMember from '../icons/IconMember.vue'
 import IconGears from '../icons/IconGears.vue'
 import { workspaceStore } from '@/stores/workspaceStore.js'
 import { deburr } from 'lodash'
-import { ref, onMounted } from 'vue' 
+import { ref, onMounted, watch } from 'vue' 
 import { useRoute, useRouter } from 'vue-router'
+import { globalBus } from '@/stores/eventbus.js';
 import EditSpaceModal from './EditSpaceModal.vue'
 const router=useRouter();
 const route = useRoute();
 
-import api from '@/services/api'; // ĐÃ THÊM: api service để gọi API
+import api from '@/services/api';
 
 const openSpaceId=ref(null);
 
@@ -19,36 +20,45 @@ const toggleSpace=(id)=>{
   openSpaceId.value = openSpaceId.value=== id ? null:id;
 }
 
-// ĐÃ THÊM: onMounted để chạy code ngay khi mở trang
-
-
 const isShow = ref(false)
 
-// HÀM MỚI: Kéo danh sách Space từ server về khi load trang
 const fetchWorkspaces = async () => {
   try {
-    const token = localStorage.getItem("token");
-    if (!token) return; // Nếu chưa đăng nhập thì thôi không gọi
-
-    const response = await api.get("/spaces");
+    console.log("📡 AppSidebar: Đang lấy danh sách workspaces...");
+    // Thêm timestamp để bypass cache
+    const response = await api.get(`/spaces?t=${Date.now()}`);
     
-    // Gán dữ liệu lấy được vào kho chung (Tùy cấu trúc API trả về mà bạn chỉnh .data cho đúng nhé)
-    workspaceStore.workspaces = response.data.data || response.data; 
+    // Gán dữ liệu lấy được vào kho chung 
+    const data = response.data.data || response.data; 
+    workspaceStore.workspaces = Array.isArray(data) ? data : [];
+    console.log("✅ AppSidebar: Đã cập nhật workspaces:", workspaceStore.workspaces);
     
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách không gian làm việc:", error);
+    console.error("❌ AppSidebar: Lỗi khi lấy danh sách không gian làm việc:", error);
   }
 }
 
 // Chạy hàm fetchWorkspaces ngay khi Sidebar xuất hiện
 onMounted(() => {
   fetchWorkspaces();
-  // Chỉ tự mở mục "Bảng/Thành viên" trong Sidebar khi đang ở trang Space (đường dẫn dạng /space/:id)
-  // Không mở khi đang ở trang board-card dạng /spaces/:idSpace/boards/:idBoard/cards
   if (route.params.idSpace && route.path.startsWith('/space/')) {
     openSpaceId.value = parseInt(route.params.idSpace)
   }
 });
+
+// Đồng bộ hóa khi có tín hiệu thay đổi Space
+watch(() => globalBus.signal, (newSignal) => {
+  if (!newSignal) return;
+  console.log("🕵️ AppSidebar: Nhận được tín hiệu từ globalBus:", newSignal);
+  
+  if (newSignal.action === 'RELOAD_SPACES' || newSignal.action === 'RELOAD_ALL' || newSignal.action === 'RELOAD_PAGE') {
+    console.log(`🚀 AppSidebar: Tín hiệu khớp (${newSignal.action}). Đang thực hiện reload...`);
+    // Thêm delay nhỏ để backend kịp đồng bộ nếu cần
+    setTimeout(() => {
+      fetchWorkspaces();
+    }, 300);
+  }
+}, { deep: true });
 
 const goToSpace = (id) => {
   router.push(`/space/${id}`);

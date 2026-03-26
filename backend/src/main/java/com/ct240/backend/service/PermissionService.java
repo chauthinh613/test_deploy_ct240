@@ -141,13 +141,52 @@ public class PermissionService {
     }
 
     public void requireInBoard(String userId, String boardId){
-        boolean isPrivate = boardRepository.isPrivate(boardId);
+        Board board = boardRepository.findById(boardId).orElseThrow(
+                () -> new AppException(ErrorCode.BOARD_NOT_FOUND)
+        );
+
+        boolean isPrivate = board.isPrivate();
+
+        Space space = boardRepository.findSpaceByBoardId(boardId);
+        boolean isMemberInSpace = spaceUserRepository.existsByUserIdAndSpaceId(userId, space.getId());
+
+        if (!isMemberInSpace) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
         boolean isMemberInBoard = boardUserRepository.existsByUserIdAndBoardId(userId, boardId);
         Role roleInSpace = getRoleInSpaceByBoardId(userId, boardId);
 
         if (roleInSpace != Role.OWNER && roleInSpace != Role.ADMIN && !isMemberInBoard && isPrivate){
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
+    }
+
+    public void requireCanModifyBoard(String userId, String boardId) {
+        Board board = boardRepository.findById(boardId).orElseThrow(
+                () -> new AppException(ErrorCode.BOARD_NOT_FOUND)
+        );
+
+        String spaceId = board.getSpace().getId();
+
+        // Check role trong space
+        boolean isMemberInSpace = spaceUserRepository.existsByUserIdAndSpaceId(userId, spaceId);
+        if (!isMemberInSpace) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Role roleInSpace = getRoleInSpace(userId, spaceId);
+
+        // OWNER hoặc ADMIN của Space → cho phép
+        if (roleInSpace == Role.OWNER || roleInSpace == Role.ADMIN) return;
+
+        // Owner của Board → cho phép
+        boolean isBoardOwner = boardUserRepository.findByUserIdAndBoardId(userId, boardId)
+                .map(BoardUser::isOwner)
+                .orElse(false);
+        if (isBoardOwner) return;
+
+        throw new AppException(ErrorCode.UNAUTHORIZED);
     }
 
 }

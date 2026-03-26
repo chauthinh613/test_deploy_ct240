@@ -162,7 +162,10 @@ const fetchComments = async () => {
     if(!props.task?.id) return;
     try {
         const res = await api.get(`/tasks/${props.task.id}/comments`);
-        comments.value = res.data.data || res.data || [];
+        const raw = res.data.data || res.data || [];
+
+        comments.value = raw.sort((a, b) => new Date(b.createAt) - new Date(a.createAt));
+
     } catch (err) {
         console.log("Load comments error or not found", err);
     }
@@ -189,6 +192,20 @@ const handlePostComment = async () => {
         fetchComments();
     } catch (error) {
         console.error("Lỗi khi đăng bình luận:", error);
+    }
+};
+
+const handleDeleteComment = async (commentId) => {
+    if (!commentId) return;
+    const ok = window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?');
+    if (!ok) return;
+
+    try {
+        await api.delete(`/comments/${commentId}`);
+        await fetchComments();
+    } catch (error) {
+        console.error("Lỗi khi xóa bình luận:", error);
+        alert("Không thể xóa bình luận! Vui lòng thử lại.");
     }
 };
 
@@ -337,7 +354,14 @@ watch(() => boardId.value, () => {
           <input type="text" placeholder="Viết bình luận..." v-model="newComment" @keydown.enter="handlePostComment">
         </div>
         <div class="comments-list">
-          <BaseComment v-for="comment in comments" :key="comment.id || Math.random()" :userName="comment.userName || comment.user?.username || 'Người dùng'" :content="comment.content"></BaseComment>
+          <BaseComment 
+            v-for="comment in comments" 
+            :key="comment.id || Math.random()" 
+            :userName="comment.user?.name || comment.user?.username || 'Người dùng'" 
+            :content="comment.content"
+            :createAt="comment.createAt"
+            @delete="handleDeleteComment(comment.id)"
+          />
         </div>
         </div>
         </div>

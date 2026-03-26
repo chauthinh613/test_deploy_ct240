@@ -3,6 +3,8 @@ import { ref,onMounted,watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/services/api'
 import draggable from 'vuedraggable'
+import { globalBus } from '@/stores/eventbus.js';
+import { useRouter } from 'vue-router'
 
 import MainLayout from '@/components/layout/MainLayout.vue'
 import Button from '@/components/base/BaseButton.vue'
@@ -13,6 +15,7 @@ import TaskInfo from '@/components/layout/TaskInfo.vue'
 import EditBoardModal from '@/components/layout/EditBoardModal.vue'
 
 const isDetailTaskOpen=ref(false);
+const router = useRouter();
 const isEditBoardModalOpen = ref(false);
 const selectedTask=ref(null);
 const OpenDetailTask=(task)=>{
@@ -107,38 +110,27 @@ const handleCardChange = async (event) => {
     const card = event.moved.element;
     const newIndex = event.moved.newIndex;
 
-    // Lấy danh sách cards hiện tại (đã được Vue cập nhật thứ tự sau khi kéo)
-    const prevCard = cards.value[newIndex - 1]; // card phía trên
-    const nextCard = cards.value[newIndex + 1]; // card phía dưới
+    // Loại card đang move ra khỏi array trước khi tính prev/next
+    const otherCards = cards.value.filter(c => c.id !== card.id);
 
-    console.log(cards)
-    console.log(prevCard)
-    console.log(nextCard)
+    const prevCard = otherCards[newIndex - 1];
+    const nextCard = otherCards[newIndex];     // không phải newIndex + 1 vì đã filter ra rồi
 
     let newPosition;
 
     if (!prevCard && !nextCard) {
-      // Chỉ có 1 card
       newPosition = 1000;
     } else if (!prevCard) {
-      // Kéo lên đầu danh sách
       newPosition = Math.round(nextCard.position / 2);
     } else if (!nextCard) {
-      // Kéo xuống cuối danh sách
       newPosition = prevCard.position + 1000;
     } else {
-      // Xen giữa 2 card → công thức của bạn
       newPosition = Math.round((prevCard.position + nextCard.position) / 2);
     }
 
     try {
-      await api.put(`/cards/${card.id}/move`, {
-        position: newPosition
-      });
-
-      // Quan trọng: Cập nhật lại position ở client để các lần thả sau không bị dùng dữ liệu cũ
+      await api.put(`/cards/${card.id}/move`, { position: newPosition });
       card.position = newPosition;
-
       console.log(`Đã chuyển Card "${card.name}" sang vị trí ${newPosition}`);
     } catch (error) {
       console.error("Lỗi cập nhật vị trí Card:", error);
@@ -192,11 +184,20 @@ const fetchBoardCard = async (SpaceId, BoardId) => {
 
   } catch (error) {
     console.error("Lỗi tổng thể:", error);
+
+    const status = error?.response?.status;
+    if (status === 403 || status === 404) {
+      console.log(`Board_CardView: Lỗi ${status}, về trang chính`);
+      router.push('/home');
+      return;
+    }
+
     cards.value = [];
   } finally {
     isLoading.value = false;
   }
 }
+
 
 const handleCreateTask = async (cardId, taskName) => {
   try {
@@ -270,6 +271,28 @@ watch(
   },
   { deep: true }
 );
+
+// Đồng bộ hóa khi có tín hiệu thay đổi
+watch(() => globalBus.signal, (newSignal) => {
+  if (!newSignal) return;
+  console.log("Board_CardView: Nhận được tín hiệu từ globalBus:", newSignal);
+
+  const currentSpaceId = route.params.idSpace;
+  const currentBoardId = route.params.idBoard;
+
+  if (newSignal.action === 'RELOAD_BOARD_TASKS' || newSignal.action === 'RELOAD_BOARD' || newSignal.action === 'RELOAD_ALL' || newSignal.action === 'RELOAD_PAGE') {
+    // Nếu là reload board tasks cụ thể, kiểm tra spaceId (nếu có)
+    const isTargetSpace = !newSignal.spaceId || String(newSignal.spaceId) === String(currentSpaceId);
+    const isTargetBoard = !newSignal.boardId || String(newSignal.boardId) === String(currentBoardId);
+
+    if (isTargetSpace && isTargetBoard) {
+       console.log(`Board_CardView: Tín hiệu khớp (${newSignal.action}). Đang thực hiện reload...`);
+       setTimeout(() => {
+         if (currentSpaceId && currentBoardId) fetchBoardCard(currentSpaceId, currentBoardId);
+       }, 300);
+    }
+  }
+}, { deep: true });
 </script>
 <template>
   <MainLayout>

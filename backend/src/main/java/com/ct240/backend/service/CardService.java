@@ -4,14 +4,18 @@ import com.ct240.backend.dto.request.CardCreationRequest;
 import com.ct240.backend.dto.request.CardUpdateRequest;
 import com.ct240.backend.dto.request.MoveCardRequest;
 import com.ct240.backend.dto.response.CardResponse;
+import com.ct240.backend.dto.response.SseResponse;
 import com.ct240.backend.entity.Board;
 import com.ct240.backend.entity.Card;
 import com.ct240.backend.entity.User;
+import com.ct240.backend.enums.Type;
+import com.ct240.backend.event.AppEvents;
 import com.ct240.backend.exception.AppException;
 import com.ct240.backend.exception.ErrorCode;
 import com.ct240.backend.mapper.CardMapper;
 import com.ct240.backend.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -40,7 +44,11 @@ public class CardService {
     @Autowired
     CardMapper cardMapper;
 
-    @Autowired PermissionService permissionService;
+    @Autowired
+    PermissionService permissionService;
+
+    @Autowired
+    ApplicationEventPublisher eventPublisher;
 
     public CardResponse createCard(String boardId, CardCreationRequest request, Authentication authentication){
         String username = authentication.getName();
@@ -67,6 +75,13 @@ public class CardService {
         card.setCreateAt(new Date());
 
         cardRepository.save(card);
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.CARD_TASK_UPDATE)
+                        .spaceId(spaceId)
+                        .build())
+        );
 
         return cardMapper.toCardResponse(card);
     }
@@ -115,6 +130,14 @@ public class CardService {
 
         cardMapper.updateCard(card, request);
         cardRepository.save(card);
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.CARD_TASK_UPDATE)
+                        .spaceId(board.getSpace().getId())
+                        .build())
+        );
+
         return cardMapper.toCardResponse(card);
     }
 
@@ -134,6 +157,14 @@ public class CardService {
 
         cardMapper.updateCard(card, request);
         cardRepository.save(card);
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.CARD_TASK_UPDATE)
+                        .spaceId(board.getSpace().getId())
+                        .build())
+        );
+
         return cardMapper.toCardResponse(card);
     }
 
@@ -158,6 +189,13 @@ public class CardService {
         permissionService.requireInBoard(user.getId(), board.getId());
 
         cardRepository.delete(card);
+
+        eventPublisher.publishEvent(new AppEvents.SpaceUpdateEvent(
+                SseResponse.builder()
+                        .type(Type.CARD_TASK_UPDATE)
+                        .spaceId(spaceId)
+                        .build())
+        );
     }
 
 
