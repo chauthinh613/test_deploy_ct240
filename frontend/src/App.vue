@@ -35,7 +35,8 @@ const setupGlobalSSE = async () => {
   controller.value = new AbortController();
 
   try {
-    await fetchEventSource('http://localhost:8080/api/notifications/subscribe', {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+    await fetchEventSource(`${apiUrl}/notifications/subscribe`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
