@@ -24,17 +24,17 @@ const isShow = ref(false)
 
 const fetchWorkspaces = async () => {
   try {
-    console.log("📡 AppSidebar: Đang lấy danh sách workspaces...");
+    console.log("AppSidebar: Đang lấy danh sách workspaces...");
     // Thêm timestamp để bypass cache
     const response = await api.get(`/spaces?t=${Date.now()}`);
     
     // Gán dữ liệu lấy được vào kho chung 
     const data = response.data.data || response.data; 
     workspaceStore.workspaces = Array.isArray(data) ? data : [];
-    console.log("✅ AppSidebar: Đã cập nhật workspaces:", workspaceStore.workspaces);
+    console.log("AppSidebar: Đã cập nhật workspaces:", workspaceStore.workspaces);
     
   } catch (error) {
-    console.error("❌ AppSidebar: Lỗi khi lấy danh sách không gian làm việc:", error);
+    console.error("AppSidebar: Lỗi khi lấy danh sách không gian làm việc:", error);
   }
 }
 
@@ -49,10 +49,10 @@ onMounted(() => {
 // Đồng bộ hóa khi có tín hiệu thay đổi Space
 watch(() => globalBus.signal, (newSignal) => {
   if (!newSignal) return;
-  console.log("🕵️ AppSidebar: Nhận được tín hiệu từ globalBus:", newSignal);
+  console.log("AppSidebar: Nhận được tín hiệu từ globalBus:", newSignal);
   
   if (newSignal.action === 'RELOAD_SPACES' || newSignal.action === 'RELOAD_ALL' || newSignal.action === 'RELOAD_PAGE') {
-    console.log(`🚀 AppSidebar: Tín hiệu khớp (${newSignal.action}). Đang thực hiện reload...`);
+    console.log(`AppSidebar: Tín hiệu khớp (${newSignal.action}). Đang thực hiện reload...`);
     // Thêm delay nhỏ để backend kịp đồng bộ nếu cần
     setTimeout(() => {
       fetchWorkspaces();
@@ -104,7 +104,7 @@ const closeEditSpaceModal = () => {
   <div class="label">Không gian làm việc</div>
   <div class="workspace-list">
       <div v-if="workspaceStore.workspaces.length === 0" class="empty-text">
-        Chưa có bảng nào. Hãy tạo mới!
+        Chưa có không gian nào. Hãy tạo mới!
       </div>
       <div 
         v-for="space in workspaceStore.workspaces" 

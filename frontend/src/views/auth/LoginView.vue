@@ -91,7 +91,7 @@ const goToRegister = () => {
   <div class="card">
         <div class="Title_content">Đăng nhập</div>
         <div class="label">Username</div>
-        <input v-model="form.username"class="input">
+        <input v-model="form.username" class="input">
         <div class="label">Password</div>
         <input v-model="form.password" class="input" type="password">
         <button class="button" id="login" type="submit">Đăng nhập</button>

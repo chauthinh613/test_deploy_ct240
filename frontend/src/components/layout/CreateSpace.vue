@@ -27,7 +27,7 @@ const handleCreateSpace = async () => {
       return;
     }
     console.log("Đang gọi API tạo Space...");
-    const response = await  api.get("/spaces",
+    const response = await axios.post("/spaces",
       { name: newSpaceName.value,
         description: newSpaceDesc.value
        },

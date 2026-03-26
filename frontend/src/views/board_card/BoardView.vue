@@ -49,10 +49,10 @@ import { globalBus } from '@/stores/eventbus.js';
 
 watch(() => globalBus.signal, (newSignal) => {
   if (!newSignal) return;
-  console.log("🕵️ BoardView: Nhận được tín hiệu từ globalBus:", newSignal);
+  console.log("BoardView: Nhận được tín hiệu từ globalBus:", newSignal);
 
   if (newSignal.action === 'RELOAD_ALL' || newSignal.action === 'RELOAD_PAGE' || newSignal.action === 'RELOAD_BOARDS') {
-    console.log(`🚀 BoardView: Tín hiệu khớp (${newSignal.action}). Đang thực hiện reload...`);
+    console.log(`BoardView: Tín hiệu khớp (${newSignal.action}). Đang thực hiện reload...`);
     setTimeout(() => {
       fetchAllSpacesAndBoards();
     }, 300);
